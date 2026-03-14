@@ -69,8 +69,24 @@ class ApiService {
     return this.unwrap(await this.client.post('/checkins'));
   }
 
+  async qrCheckin(qrPayload) {
+    return this.unwrap(await this.client.post('/checkins/qr', { qrPayload }));
+  }
+
   async getCheckins(userId) {
     return this.unwrap(await this.client.get(`/checkins/user/${userId}`));
+  }
+
+  async getPurchaseQr() {
+    return this.unwrap(await this.client.get('/purchases/my-qr'));
+  }
+
+  async scanPurchase(qrToken, amount) {
+    return this.unwrap(await this.client.post('/purchases/scan', { qrToken, amount }));
+  }
+
+  async getGymQrData(gymId) {
+    return this.unwrap(await this.client.get(`/gyms/${gymId}/qr-code`));
   }
 
   async getLeaderboard(gymId) {

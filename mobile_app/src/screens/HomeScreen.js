@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
 import { useLeaderboardData } from '../providers/LeaderboardProvider';
@@ -21,7 +22,6 @@ export default function HomeScreen({ navigation }) {
   const [topThree, setTopThree] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkinLoading, setCheckinLoading] = useState(false);
   const [checkinResult, setCheckinResult] = useState(null);
   const [fade] = useState(new Animated.Value(0));
   const [resultFade] = useState(new Animated.Value(0));
@@ -55,21 +55,14 @@ export default function HomeScreen({ navigation }) {
     }
   }, [loading]);
 
-  const onCheckin = async () => {
-    try {
-      setCheckinLoading(true);
-      setCheckinResult(null);
-      const result = await apiService.checkIn();
-      setCheckinResult(result.data);
-      resultFade.setValue(0);
-      Animated.timing(resultFade, { toValue: 1, duration: 420, useNativeDriver: true }).start();
-      await refreshMe();
-    } catch (e) {
-      Alert.alert('Check-in', e.message);
-    } finally {
-      setCheckinLoading(false);
-    }
-  };
+  // Listen for check-in results coming back from QrScannerScreen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Refresh data when coming back to HomeScreen
+      load(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const onShare = async () => {
     await Share.share({
@@ -84,6 +77,7 @@ export default function HomeScreen({ navigation }) {
 
   const streak = user?.visitStreak || 0;
   const hasBoosts = (user?.activeSupplements || []).length > 0;
+  const isOwner = user?.isOwner;
 
   return (
     <ScrollView
@@ -127,36 +121,43 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.body}>
 
-          {/* ── CHECK IN CTA ── */}
-          <Pressable
-            style={({ pressed }) => [styles.checkinBtn, pressed && { opacity: 0.88 }, checkinLoading && { opacity: 0.6 }]}
-            onPress={onCheckin}
-            disabled={checkinLoading}
-          >
-            <LinearGradient colors={['#E00', '#900']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.checkinGrad}>
-              <Text style={styles.checkinIcon}>📍</Text>
-              <Text style={styles.checkinText}>{checkinLoading ? 'Checking in...' : 'CHECK IN NOW'}</Text>
-            </LinearGradient>
-          </Pressable>
+          {/* ── CHECK IN & PURCHASE QR ── */}
+          <View style={styles.qrActionsRow}>
+            <Pressable
+              style={({ pressed }) => [styles.checkinBtn, { flex: 1 }, pressed && { opacity: 0.88 }]}
+              onPress={() => navigation.navigate('QrScanner')}
+            >
+              <LinearGradient colors={['#E00', '#900']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.checkinGrad}>
+                <Ionicons name="qr-code-outline" size={22} color="#fff" />
+                <Text style={styles.checkinText}>CHECK IN</Text>
+              </LinearGradient>
+            </Pressable>
 
-          {/* ── Check-in result ── */}
-          {checkinResult && (
-            <Animated.View style={[styles.checkinResult, { opacity: resultFade }]}>
-              <Text style={styles.resultTitle}>Check-in complete!</Text>
-              <View style={styles.rewardsRow}>
-                <View style={styles.rewardPill}>
-                  <Text style={styles.rewardVal}>+{checkinResult.xpEarned}</Text>
-                  <Text style={styles.rewardLbl}>PWR</Text>
-                </View>
-                <View style={[styles.rewardPill, { borderColor: '#D4AF3744' }]}>
-                  <Text style={[styles.rewardVal, { color: '#D4AF37' }]}>+{checkinResult.gcEarned}</Text>
-                  <Text style={styles.rewardLbl}>GAINS</Text>
+            <Pressable
+              style={({ pressed }) => [styles.purchaseQrBtn, pressed && { opacity: 0.88 }]}
+              onPress={() => navigation.navigate('PurchaseQr')}
+            >
+              <LinearGradient colors={['#1A1400', '#111']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.purchaseQrGrad}>
+                <Ionicons name="wallet-outline" size={20} color="#D4AF37" />
+                <Text style={styles.purchaseQrText}>MY QR</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+
+          {/* ── Staff scan (owner only) ── */}
+          {isOwner && (
+            <Pressable
+              style={({ pressed }) => [styles.staffBtn, pressed && { opacity: 0.88 }]}
+              onPress={() => navigation.navigate('StaffScan')}
+            >
+              <View style={styles.staffBtnInner}>
+                <Ionicons name="scan-outline" size={18} color="#22C55E" />
+                <Text style={styles.staffBtnText}>Scan Purchase</Text>
+                <View style={styles.staffBadge}>
+                  <Text style={styles.staffBadgeText}>STAFF</Text>
                 </View>
               </View>
-              <Text style={styles.statGains}>
-                💪 +{checkinResult.muscleGained}  ⚡ +{checkinResult.powerGained}  🛡️ +{checkinResult.enduranceGained}
-              </Text>
-            </Animated.View>
+            </Pressable>
           )}
 
           {/* ── Streak ── */}
@@ -277,27 +278,31 @@ const styles = StyleSheet.create({
   // Body
   body: { paddingHorizontal: 16, paddingTop: 14 },
 
+  // QR Actions row
+  qrActionsRow: { flexDirection: 'row', gap: 10 },
+
   // Check-in CTA
   checkinBtn:  { borderRadius: 14, overflow: 'hidden' },
   checkinGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 10 },
-  checkinIcon: { fontSize: 20 },
   checkinText: { color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.5 },
 
-  // Check-in result
-  checkinResult: {
-    backgroundColor: '#0D1F12', borderRadius: 14,
-    borderWidth: 1, borderColor: '#1F6B3488',
-    padding: 16, alignItems: 'center', gap: 10, marginTop: 10,
+  // Purchase QR button
+  purchaseQrBtn: { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#D4AF3733' },
+  purchaseQrGrad: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 16, gap: 4 },
+  purchaseQrText: { color: '#D4AF37', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
+
+  // Staff scan button (owner only)
+  staffBtn: {
+    marginTop: 10, borderRadius: 12, borderWidth: 1, borderColor: '#22C55E33',
+    backgroundColor: '#0D1F12', overflow: 'hidden',
   },
-  resultTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  rewardsRow:  { flexDirection: 'row', gap: 10 },
-  rewardPill:  {
-    backgroundColor: '#111', borderRadius: 10, borderWidth: 1, borderColor: colors.primary + '44',
-    paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center',
+  staffBtnInner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 12, gap: 8,
   },
-  rewardVal:  { color: colors.primary, fontWeight: '900', fontSize: 18 },
-  rewardLbl:  { color: '#555', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  statGains:  { color: '#888', fontSize: 13 },
+  staffBtnText: { color: '#22C55E', fontWeight: '700', fontSize: 13 },
+  staffBadge: { backgroundColor: '#22C55E22', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  staffBadgeText: { color: '#22C55E', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
 
   // Streak card
   streakCard: {

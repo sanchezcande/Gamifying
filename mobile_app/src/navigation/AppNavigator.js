@@ -7,6 +7,9 @@ import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AvatarCreationScreen from '../screens/AvatarCreationScreen';
+import QrScannerScreen from '../screens/QrScannerScreen';
+import PurchaseQrScreen from '../screens/PurchaseQrScreen';
+import StaffScanScreen from '../screens/StaffScanScreen';
 import MainTabs from './MainTabs';
 import SessionChatScreen from '../screens/SessionChatScreen';
 import LoadingScreen from '../components/LoadingScreen';
@@ -48,6 +51,9 @@ export default function AppNavigator() {
             <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="SessionChat" component={SessionChatScreen} />
             <Stack.Screen name="AvatarCreation" component={AvatarCreationScreen} />
+            <Stack.Screen name="QrScanner" component={QrScannerScreen} options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="PurchaseQr" component={PurchaseQrScreen} options={{ presentation: 'modal' }} />
+            <Stack.Screen name="StaffScan" component={StaffScanScreen} options={{ presentation: 'fullScreenModal' }} />
           </>
         )}
       </Stack.Navigator>
