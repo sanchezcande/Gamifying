@@ -19,7 +19,7 @@ const defaultFace = {
 };
 
 export default function AvatarCreationScreen({ navigation, route }) {
-  const { createAvatar } = useAuth();
+  const { user, createAvatar } = useAuth();
   const editing = route.params?.editing ?? false;
   const [step, setStep] = useState(editing ? 1 : 1);
   const [loading, setLoading] = useState(false);
