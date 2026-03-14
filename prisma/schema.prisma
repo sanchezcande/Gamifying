@@ -41,6 +41,11 @@ enum CompetitionStatus {
   CLOSED
 }
 
+enum CheckinMethod {
+  QR
+  FACE_ID
+}
+
 enum WorkoutType {
   WEIGHTS
   CARDIO
@@ -105,6 +110,8 @@ model Gym {
   name         String
   location     String
   ownerId      String?       @unique
+  qrSecret     String        @unique @default(cuid())
+  apiKey       String        @unique @default(cuid())
   createdAt    DateTime      @default(now())
 
   owner        User?         @relation("GymOwner", fields: [ownerId], references: [id])
@@ -117,15 +124,16 @@ model Gym {
 }
 
 model CheckIn {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   userId          String
   gymId           String
+  method          CheckinMethod @default(QR)
   xpEarned        Int
   gcEarned        Int
   muscleGained    Int
   enduranceGained Int
   powerGained     Int
-  createdAt       DateTime @default(now())
+  createdAt       DateTime      @default(now())
 
   user User @relation(fields: [userId], references: [id])
   gym  Gym  @relation(fields: [gymId], references: [id])

@@ -5,6 +5,7 @@ const cors = require('cors');
 const auth = require('./middleware/auth');
 const avatarCreated = require('./middleware/avatarCreated');
 
+const { createFaceIdCheckin } = require('./controllers/checkin.controller');
 const authRoutes = require('./routes/auth.routes');
 const checkinRoutes = require('./routes/checkin.routes');
 const purchaseRoutes = require('./routes/purchase.routes');
@@ -27,6 +28,9 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/avatar', avatarRoutes);
+
+// External endpoint — no JWT auth, uses gym API key
+app.post('/api/checkins/face-id', createFaceIdCheckin);
 
 app.use('/api/checkins', auth, avatarCreated, checkinRoutes);
 app.use('/api/purchases', auth, avatarCreated, purchaseRoutes);

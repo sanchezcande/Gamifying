@@ -84,4 +84,46 @@ async function getGymMembers(req, res) {
   }
 }
 
-module.exports = { createGym, getGym, getGymMembers };
+/**
+ * Returns the gym's QR payload for the owner to print/display.
+ * Only gym owners can access this.
+ */
+async function getGymQrData(req, res) {
+  try {
+    const { gymId } = req.params;
+    const gym = await prisma.gym.findUnique({ where: { id: gymId } });
+    if (!gym) return fail(res, 404, 'Gym not found');
+
+    const qrPayload = `gamifying:checkin:${gym.id}:${gym.qrSecret}`;
+    return ok(res, { qrPayload, apiKey: gym.apiKey });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+/**
+ * Regenerates the gym's QR secret and API key.
+ */
+async function regenerateGymSecrets(req, res) {
+  try {
+    const { gymId } = req.params;
+    const gym = await prisma.gym.findUnique({ where: { id: gymId } });
+    if (!gym) return fail(res, 404, 'Gym not found');
+
+    const crypto = require('crypto');
+    const updated = await prisma.gym.update({
+      where: { id: gymId },
+      data: {
+        qrSecret: crypto.randomUUID(),
+        apiKey: crypto.randomUUID()
+      }
+    });
+
+    const qrPayload = `gamifying:checkin:${updated.id}:${updated.qrSecret}`;
+    return ok(res, { qrPayload, apiKey: updated.apiKey });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+module.exports = { createGym, getGym, getGymMembers, getGymQrData, regenerateGymSecrets };
