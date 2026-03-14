@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Gamifying",
+    "slug": "gamifying-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0A"
+      }
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}
