@@ -1,7 +1,8 @@
 const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
 const { getAvatarProgress } = require('../services/avatarService');
-const { buildAvatarUrlForUser, generateAvatarUrlForUser } = require('../services/avatarImageService');
+const { buildAvatarUrlForUser } = require('../services/avatarImageService');
+const { enqueueAvatarRender } = require('../services/avatarRenderQueue');
 
 async function createReferral(req, res) {
   try {
@@ -101,30 +102,18 @@ async function createReferral(req, res) {
     });
 
     if (referralResult?.referrerShouldUpdate) {
-      const aiPhoto = await generateAvatarUrlForUser({
+      enqueueAvatarRender({
         user: referralResult.referrer,
         avatarClass: referralResult.referrerAvatar.avatarClass,
         avatarBodyStage: referralResult.referrerAvatar.avatarBodyStage
       });
-      if (aiPhoto) {
-        await prisma.user.update({
-          where: { id: referralResult.referrer.id },
-          data: { profilePhoto: aiPhoto }
-        });
-      }
     }
     if (referralResult?.referredShouldUpdate) {
-      const aiPhoto = await generateAvatarUrlForUser({
+      enqueueAvatarRender({
         user: referralResult.referred,
         avatarClass: referralResult.referredAvatar.avatarClass,
         avatarBodyStage: referralResult.referredAvatar.avatarBodyStage
       });
-      if (aiPhoto) {
-        await prisma.user.update({
-          where: { id: referralResult.referred.id },
-          data: { profilePhoto: aiPhoto }
-        });
-      }
     }
 
     return ok(res, { xpEarned, gcEarned });
