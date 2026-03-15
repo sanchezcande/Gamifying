@@ -12,10 +12,8 @@ const CLASS_BORDER = {
   ROOKIE:   '#555555'
 };
 
-function dicebearUrl(name, avatarClass, bodyStage) {
-  const stageKey = bodyStage ? `stage-${bodyStage}` : 'stage-x';
-  const seed = encodeURIComponent(`${name || 'avatar'}-${avatarClass}-${stageKey}`);
-  return `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=256&backgroundColor=111111`;
+function dicebearUrl(seed) {
+  return `https://api.dicebear.com/9.x/adventurer/png?seed=${encodeURIComponent(seed)}&size=256&backgroundColor=111111`;
 }
 
 function getSupplementGlow(activeSupplements = []) {
@@ -27,12 +25,13 @@ function getSupplementGlow(activeSupplements = []) {
   return null;
 }
 
-export default function AvatarCircle({ name, avatarClass, bodyStage, size = 'medium', activeSupplements = [], profilePhoto }) {
+export default function AvatarCircle({ name, avatarClass, bodyStage, size = 'medium', activeSupplements = [], profilePhoto, previewSeed }) {
   const dimension = typeof size === 'number' ? size : (sizes[size] || sizes.medium);
   const glowColor = getSupplementGlow(activeSupplements);
   const borderColor = glowColor || CLASS_BORDER[avatarClass] || '#444';
+  const fallbackSeed = previewSeed || `${name || 'avatar'}-${avatarClass}-${bodyStage || 1}`;
   const primaryUri = profilePhoto;
-  const fallbackUri = dicebearUrl(name, avatarClass, bodyStage);
+  const fallbackUri = dicebearUrl(fallbackSeed);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [usingFallback, setUsingFallback] = useState(false);
   const [allFailed, setAllFailed] = useState(false);

@@ -40,18 +40,6 @@ const STAGE_BUILD = {
   5: 'elite build, massive bodybuilder physique',
 };
 
-// Keep aesthetics consistent across renders
-const STYLE_LOCK = [
-  'consistent art style across renders',
-  'premium mobile game character art',
-  'gritty cinematic gym vibe',
-  'dark studio background with soft haze',
-  'high-contrast rim lighting',
-  'muted palette with warm highlights',
-  'sharp focus, ultra detailed',
-  'no text, no watermark, no logo'
-];
-
 function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}, bodyStage }) {
   const genderLabel = gender === 'FEMALE' ? 'female' : 'male';
   const stageKey = Number(bodyStage);
@@ -70,8 +58,22 @@ function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}
     LOOKUPS.eyebrow[faceOptions.faceEyebrowId] ? `${LOOKUPS.eyebrow[faceOptions.faceEyebrowId]} eyebrows` : null,
   ].filter(Boolean).join(', ');
 
-  const stageTag = stageKey ? `body stage ${stageKey} of 5` : null;
-  return `professional character portrait, ${genderLabel} athlete. ${build}. ${stageTag || ''} ${face}. Confident pose, fists clenched. ${STYLE_LOCK.join(', ')}.`;
+  const outfit = gender === 'FEMALE'
+    ? 'wearing a red sports bra and black athletic shorts, white sneakers'
+    : 'wearing a red tank top and black athletic shorts, white sneakers';
+
+  return [
+    `3D cartoon stylized full-body ${genderLabel} gym character`,
+    'Pixar-inspired mobile game art style',
+    'chibi proportions with oversized head and expressive face',
+    build,
+    face,
+    outfit,
+    'standing confident pose with fists clenched',
+    'clean solid white background',
+    'smooth 3D render, vibrant colors, soft shadows',
+    'single character only, no duplicates, no text, no watermark',
+  ].join('. ') + '.';
 }
 
 function buildFaceOptionsFromUser(user = {}) {

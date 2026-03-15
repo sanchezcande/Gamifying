@@ -64,6 +64,14 @@ const prisma = {
     findMany: jest.fn(),
     create: jest.fn()
   },
+  avatarRenderJob: {
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+    update: jest.fn()
+  },
+  avatarRenderMetric: {
+    upsert: jest.fn()
+  },
   $executeRaw: jest.fn(),
   $queryRaw: jest.fn(),
   $transaction: jest.fn(),

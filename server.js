@@ -5,6 +5,7 @@ const app = require('./src/app');
 const { runDailyDecay } = require('./src/jobs/dailyDecay');
 const { runMonthlyReset } = require('./src/jobs/monthlyReset');
 const { runExpireItems } = require('./src/jobs/expireItems');
+const { startAvatarRenderWorker } = require('./src/services/avatarRenderQueue');
 
 cron.schedule('0 0 * * *', async () => {
   await runDailyDecay();
@@ -19,6 +20,8 @@ const PORT = Number(process.env.PORT) || 3000;
 app.listen(PORT, () => {
   console.log(`Gamifying API running on port ${PORT}`);
 });
+
+startAvatarRenderWorker();
 
 process.on('SIGINT', async () => {
   await prisma.$disconnect();
