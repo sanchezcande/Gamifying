@@ -77,6 +77,16 @@ const FACE_OPTIONS = {
     { id: 2, label: 'thick' },
     { id: 3, label: 'arched' },
     { id: 4, label: 'straight' }
+  ],
+  eyebrowColor: [
+    { id: 1, label: 'black' },
+    { id: 2, label: 'brown' },
+    { id: 3, label: 'blonde' },
+    { id: 4, label: 'red' },
+    { id: 5, label: 'white' },
+    { id: 6, label: 'grey' },
+    { id: 7, label: 'blue' },
+    { id: 8, label: 'green' }
   ]
 };
 

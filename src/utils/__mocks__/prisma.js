@@ -65,6 +65,7 @@ const prisma = {
     create: jest.fn()
   },
   avatarRenderJob: {
+    findMany: jest.fn(),
     findUnique: jest.fn(),
     upsert: jest.fn(),
     update: jest.fn()

@@ -78,6 +78,7 @@ async function createAvatar(req, res) {
       faceSkinToneId,
       faceBeardId,
       faceEyebrowId,
+      faceEyebrowColorId,
       imageVariant
     } = req.body;
 
@@ -86,7 +87,7 @@ async function createAvatar(req, res) {
     const faceOptions = {
       faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
       faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
-      faceBeardId, faceEyebrowId
+      faceBeardId, faceEyebrowId, faceEyebrowColorId
     };
 
     const avatarClass = getAvatarClass(req.user.xp);
@@ -114,7 +115,7 @@ async function createAvatar(req, res) {
         avatarGender: gender,
         faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
         faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
-        faceBeardId, faceEyebrowId,
+        faceBeardId, faceEyebrowId, faceEyebrowColorId,
         profilePhoto,
         avatarClass,
         avatarBodyStage
@@ -128,20 +129,4 @@ async function createAvatar(req, res) {
   }
 }
 
-async function updateProfilePhoto(req, res) {
-  try {
-    const { profilePhoto } = req.body;
-    if (!profilePhoto) return fail(res, 400, 'profilePhoto is required');
-
-    const user = await prisma.user.update({
-      where: { id: req.user.id },
-      data: { profilePhoto }
-    });
-    const { password: _password, ...safeUser } = user;
-    return ok(res, safeUser);
-  } catch (error) {
-    return fail(res, 500, error.message);
-  }
-}
-
-module.exports = { register, login, me, createAvatar, updateProfilePhoto, signToken };
+module.exports = { register, login, me, createAvatar, signToken };

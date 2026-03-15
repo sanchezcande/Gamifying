@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../providers/AuthProvider';
 import { useAvatarData } from '../providers/AvatarProvider';
 import apiService from '../services/apiService';
 import AvatarCircle from '../components/AvatarCircle';
+import AvatarSprite from '../components/AvatarSprite';
 import ClassBadge from '../components/ClassBadge';
 import XPBar from '../components/XPBar';
 import LoadingScreen from '../components/LoadingScreen';
@@ -70,10 +70,10 @@ function nextClassName(current) {
 
 // ─── Screen ────────────────────────────────────────────────────────────────────
 export default function ProfileScreen({ navigation }) {
-  const { user, logout, refreshMe } = useAuth();
+  const { user, logout } = useAuth();
   const { avatar, loading: avatarLoading, loadAvatar } = useAvatarData();
   const [gym, setGym] = useState(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
+  const [showFullBody, setShowFullBody] = useState(false);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -87,36 +87,6 @@ export default function ProfileScreen({ navigation }) {
   const bodyStage = user?.avatarBodyStage || 1;
   const daysInactive = user?.lastVisitDate ? Math.floor((Date.now() - new Date(user.lastVisitDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
-  const pickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Allow access to your photos to set a profile picture.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
-    });
-
-    if (result.canceled) return;
-
-    try {
-      setPhotoUploading(true);
-      const asset = result.assets[0];
-      const base64Uri = `data:image/jpeg;base64,${asset.base64}`;
-      await apiService.updateProfilePhoto(base64Uri);
-      await refreshMe();
-    } catch (e) {
-      Alert.alert('Photo', e.message);
-    } finally {
-      setPhotoUploading(false);
-    }
-  };
-
   const onShare = async () => {
     await Share.share({
       message: `Join my gym on Gamifying! Use my referral email: ${user?.email}. We both earn +200 PWR + 100 GAINS.`
@@ -125,24 +95,23 @@ export default function ProfileScreen({ navigation }) {
 
   if (avatarLoading && !avatar) return <LoadingScreen />;
 
-  const hasProfilePhoto = !!user?.profilePhoto;
-
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
 
       {/* ── Hero ── */}
       <LinearGradient colors={['#180003', '#0F0001', '#0A0A0A']} style={[styles.hero, { paddingTop: insets.top + 10 }]}>
 
-        {/* Profile photo + avatar */}
-        <Pressable style={styles.photoWrap} onPress={pickPhoto}>
-          {hasProfilePhoto ? (
-            <Image source={{ uri: user.profilePhoto }} style={styles.profilePhoto} />
-          ) : (
-            <AvatarCircle name={user?.name} avatarClass={user?.avatarClass} bodyStage={user?.avatarBodyStage} size="large" activeSupplements={user?.activeSupplements || []} profilePhoto={user?.profilePhoto} />
-          )}
-          <View style={styles.cameraBadge}>
-            <Text style={styles.cameraBadgeText}>{photoUploading ? '...' : '📷'}</Text>
-          </View>
+        {/* Avatar */}
+        <Pressable style={styles.photoWrap} onPress={() => setShowFullBody(true)}>
+          <AvatarCircle
+            name={user?.name}
+            avatarClass={user?.avatarClass}
+            bodyStage={user?.avatarBodyStage}
+            size="large"
+            activeSupplements={user?.activeSupplements || []}
+            profilePhoto={user?.profilePhoto}
+          />
+          <Text style={styles.tapHint}>Tap to view full body</Text>
         </Pressable>
 
         <Text style={styles.heroName}>{user?.name}</Text>
@@ -218,56 +187,48 @@ export default function ProfileScreen({ navigation }) {
               const found = (avatar?.equippedCosmetics || []).find((x) => x.shopItem?.category === category);
               const icons = { OUTFIT: '👕', PANTS: '👖', SHOES: '👟', ACCESSORY: '⌚' };
               return (
-                <Pressable key={category} style={styles.cosmeticSlot} onPress={() => navigation.navigate('Shop')}>
+                <View key={category} style={styles.cosmeticSlot}>
                   <Text style={styles.cosmeticIcon}>{icons[category]}</Text>
-                  <View>
-                    <Text style={styles.cosmeticCategory}>{category}</Text>
-                    <Text style={styles.cosmeticItem}>{found?.shopItem?.name || 'Empty'}</Text>
-                  </View>
-                </Pressable>
+                  <Text style={styles.cosmeticName}>{found?.shopItem?.name || 'Empty'}</Text>
+                </View>
               );
             })}
           </View>
         </View>
 
         {/* ── Active Supplements ── */}
-        {(avatar?.activeSupplements || []).length > 0 && (
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>ACTIVE SUPPLEMENTS</Text>
-            {avatar.activeSupplements.map((sup) => (
-              <View key={sup.id} style={styles.suppRow}>
-                <Text style={styles.suppName}>{sup.shopItem?.name}</Text>
-                <Text style={styles.suppTime}>{timeLeftLabel(sup.expiresAt)}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* ── Inactivity Warning ── */}
-        {daysInactive > 5 && (
-          <View style={styles.warningCard}>
-            <Text style={styles.warningText}>Your avatar is losing muscle! Come back to the gym to keep growing.</Text>
-          </View>
-        )}
-
-        {/* ── Invite ── */}
         <View style={styles.sectionCard}>
-          <View style={styles.inviteHeader}>
-            <Text style={styles.sectionTitle}>INVITE A FRIEND</Text>
-            <Text style={styles.inviteBadge}>+200 PWR · +100 GAINS</Text>
-          </View>
-          <Text style={styles.inviteSub}>Share your link — both earn rewards when they join.</Text>
-          <Pressable style={({ pressed }) => [styles.inviteBtn, pressed && { opacity: 0.8 }]} onPress={onShare}>
-            <Text style={styles.inviteBtnText}>Share Invite Link</Text>
-          </Pressable>
+          <Text style={styles.sectionTitle}>ACTIVE SUPPLEMENTS</Text>
+          {(avatar?.activeSupplements || []).map((sup) => (
+            <View key={sup.id} style={styles.suppRow}>
+              <Text style={styles.suppName}>{sup.shopItem?.name}</Text>
+              <Text style={styles.suppTime}>{timeLeftLabel(sup.expiresAt)}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* ── Logout ── */}
-        <Pressable style={({ pressed }) => [styles.logoutBtn, pressed && { opacity: 0.7 }]} onPress={() => logout()}>
-          <Text style={styles.logoutText}>Log Out</Text>
-        </Pressable>
-
+        {/* ── Share / Logout ── */}
+        <View style={styles.actionRow}>
+          <Pressable style={styles.shareBtn} onPress={onShare}>
+            <Text style={styles.shareText}>Share referral</Text>
+          </Pressable>
+          <Pressable style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutText}>Log out</Text>
+          </Pressable>
+        </View>
       </View>
+
+      {/* Full body modal */}
+      <Modal visible={showFullBody} transparent animationType="fade">
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowFullBody(false)}>
+          <View style={styles.modalCard}>
+            <AvatarSprite avatarClass={user?.avatarClass} bodyStage={user?.avatarBodyStage} size={180} idle />
+            <Text style={styles.modalName}>{user?.name}</Text>
+            <Text style={styles.modalStage}>Stage {bodyStage}</Text>
+            <Text style={styles.modalHint}>Tap anywhere to close</Text>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -275,108 +236,88 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
 
-  // Hero
-  hero:      { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 24, gap: 6 },
-  heroName:  { color: '#fff', fontSize: 24, fontWeight: '900', marginTop: 6 },
-  heroMeta:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  heroDot:   { color: '#333' },
-  heroStage: { color: '#666', fontWeight: '700', fontSize: 13 },
-  heroGym:   { color: '#444', fontSize: 13, fontWeight: '600' },
-  heroDate:  { color: '#2A2A2A', fontSize: 12 },
+  hero: { paddingHorizontal: 20, paddingBottom: 22 },
+  heroName: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 10 },
+  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  heroDot: { color: '#444' },
+  heroStage: { color: colors.textSecondary, fontWeight: '700' },
+  heroGym: { color: '#666', marginTop: 6 },
+  heroDate: { color: '#444', fontSize: 12, marginTop: 4 },
 
-  // Profile photo
-  photoWrap: { position: 'relative' },
-  profilePhoto: {
-    width: 82, height: 82, borderRadius: 41,
-    borderWidth: 2.5, borderColor: colors.primary,
-  },
-  cameraBadge: {
-    position: 'absolute', bottom: -2, right: -2,
-    backgroundColor: '#1E1E1E', borderRadius: 12,
-    borderWidth: 2, borderColor: colors.background,
-    width: 28, height: 28,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cameraBadgeText: { fontSize: 13 },
+  photoWrap: { alignItems: 'center' },
+  tapHint: { color: '#666', fontSize: 11, marginTop: 8 },
 
-  // Body
-  body:     { paddingHorizontal: 16, paddingTop: 12, gap: 12 },
-  statsRow: { flexDirection: 'row', gap: 8 },
+  body: { paddingHorizontal: 16, paddingTop: 16, gap: 14 },
 
-  // Edit avatar
   editAvatarBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#161616', borderRadius: 12,
-    borderWidth: 1, borderColor: '#2A2A2A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.button,
     paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   editAvatarIcon: { fontSize: 14 },
-  editAvatarText: { color: '#ccc', fontWeight: '700', fontSize: 14 },
+  editAvatarText: { color: '#fff', fontWeight: '700' },
 
-  // Section cards
+  statsRow: { flexDirection: 'row', gap: 10 },
+
   sectionCard: {
-    backgroundColor: '#111', borderRadius: 16,
-    borderWidth: 1, borderColor: '#1E1E1E',
-    padding: 16, gap: 8,
-  },
-  sectionTitle: { color: colors.primary, fontWeight: '800', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' },
-  muted:        { color: '#444', fontSize: 12 },
-
-  // Class progression
-  classRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  classArrow:  { color: '#333', fontSize: 16 },
-  classNext:   { color: '#555', fontWeight: '800', fontSize: 12, letterSpacing: 1 },
-  classXpText: { color: '#444', fontSize: 11, marginTop: 2 },
-  maxRankRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  maxRankIcon: { fontSize: 20 },
-  maxRankText: { color: colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 1 },
-
-  // Cosmetics
-  cosmeticsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  cosmeticSlot: {
-    width: '48%', flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#0A0A0A', borderRadius: 12,
-    borderWidth: 1, borderColor: '#1E1E1E',
-    padding: 10,
-  },
-  cosmeticIcon:     { fontSize: 20 },
-  cosmeticCategory: { color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  cosmeticItem:     { color: '#fff', fontWeight: '700', fontSize: 12 },
-
-  // Supplements
-  suppRow: {
-    backgroundColor: '#0A0A0A', borderRadius: 10,
-    borderWidth: 1, borderColor: '#1E1E1E',
-    flexDirection: 'row', justifyContent: 'space-between',
-    padding: 10,
-  },
-  suppName: { color: '#fff', fontWeight: '600', fontSize: 13 },
-  suppTime: { color: colors.primary, fontWeight: '700', fontSize: 13 },
-
-  // Warning
-  warningCard: {
-    backgroundColor: '#2f1212', borderRadius: 14,
-    borderWidth: 1, borderColor: colors.primary + '55',
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     padding: 14,
   },
-  warningText: { color: '#ccc', fontSize: 13, lineHeight: 18 },
+  sectionTitle: { color: colors.primary, fontWeight: '800', fontSize: 12, marginBottom: 8 },
+  classRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  classArrow: { color: '#666', fontWeight: '800' },
+  classNext: { color: '#fff', fontWeight: '800' },
+  classXpText: { color: '#666', fontSize: 12, marginTop: 6 },
+  maxRankRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  maxRankIcon: { fontSize: 18 },
+  maxRankText: { color: '#fff', fontWeight: '800' },
 
-  // Invite
-  inviteHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  inviteBadge:  { color: '#D4AF37', fontSize: 10, fontWeight: '700' },
-  inviteSub:    { color: '#555', fontSize: 13 },
-  inviteBtn: {
-    backgroundColor: '#1E1E1E', borderRadius: radius.button,
-    borderWidth: 1, borderColor: '#2A2A2A',
-    paddingVertical: 12, alignItems: 'center', marginTop: 4,
-  },
-  inviteBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  muted: { color: '#666', fontSize: 12 },
 
-  // Logout
-  logoutBtn: {
-    backgroundColor: 'transparent', borderRadius: radius.button,
-    borderWidth: 1, borderColor: '#1E1E1E',
-    paddingVertical: 12, alignItems: 'center',
+  cosmeticsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  cosmeticSlot: {
+    width: '48%',
+    backgroundColor: '#0c0c0c',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderRadius: 12,
+    padding: 10,
+    gap: 6,
   },
-  logoutText: { color: '#444', fontWeight: '700', fontSize: 14 },
+  cosmeticIcon: { fontSize: 16 },
+  cosmeticName: { color: '#fff', fontWeight: '700', fontSize: 12 },
+
+  suppRow: {
+    backgroundColor: '#0c0c0c',
+    borderWidth: 1,
+    borderColor: '#222',
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+    marginBottom: 6
+  },
+  suppName: { color: '#fff' },
+  suppTime: { color: colors.primary, fontWeight: '700' },
+
+  actionRow: { flexDirection: 'row', gap: 10 },
+  shareBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.button, padding: 12, alignItems: 'center' },
+  shareText: { color: '#fff', fontWeight: '800' },
+  logoutBtn: { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.button, padding: 12, alignItems: 'center', backgroundColor: colors.surface },
+  logoutText: { color: '#fff', fontWeight: '700' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalCard: { backgroundColor: '#0c0c0c', borderRadius: 18, borderWidth: 1, borderColor: '#222', padding: 20, alignItems: 'center', gap: 6 },
+  modalName: { color: '#fff', fontWeight: '800', fontSize: 18, marginTop: 8 },
+  modalStage: { color: colors.textSecondary },
+  modalHint: { color: '#555', fontSize: 11, marginTop: 4 }
 });

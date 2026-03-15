@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../providers/AuthProvider';
 import { useAvatarData } from '../providers/AvatarProvider';
@@ -8,6 +8,7 @@ import StatCard from '../components/StatCard';
 import XPBar from '../components/XPBar';
 import LoadingScreen from '../components/LoadingScreen';
 import AvatarCircle from '../components/AvatarCircle';
+import AvatarSprite from '../components/AvatarSprite';
 import { colors, radius } from '../theme/theme';
 import { skinToneColor, timeLeftLabel } from '../utils/avatar';
 
@@ -17,6 +18,7 @@ const circleByStage = { 1: 110, 2: 126, 3: 146, 4: 168, 5: 192 };
 export default function AvatarScreen({ navigation }) {
   const { user } = useAuth();
   const { avatar, loading, loadAvatar } = useAvatarData();
+  const [showFullBody, setShowFullBody] = useState(false);
 
   useEffect(() => {
     if (user?.id) loadAvatar(user.id);
@@ -38,14 +40,17 @@ export default function AvatarScreen({ navigation }) {
           <ClassBadge avatarClass={avatar.class} />
           <Text style={styles.stage}>Stage {avatar.bodyStage}</Text>
         </View>
-        <AvatarCircle
-          name={user?.name}
-          avatarClass={avatar.class}
-          bodyStage={avatar.bodyStage}
-          size={circleByStage[avatar.bodyStage] || 126}
-          profilePhoto={avatar.profilePhoto || user?.profilePhoto}
-          activeSupplements={avatar.activeSupplements}
-        />
+        <Pressable onPress={() => setShowFullBody(true)}>
+          <AvatarCircle
+            name={user?.name}
+            avatarClass={avatar.class}
+            bodyStage={avatar.bodyStage}
+            size={circleByStage[avatar.bodyStage] || 126}
+            profilePhoto={avatar.profilePhoto || user?.profilePhoto}
+            activeSupplements={avatar.activeSupplements}
+          />
+        </Pressable>
+        <Text style={styles.tapHint}>Tap to view full body</Text>
         <View style={[styles.avatarShape, { backgroundColor: skinToneColor(avatar.faceOptions?.faceSkinToneId), width: widthByStage[avatar.bodyStage] || 62 }]} />
       </LinearGradient>
 
@@ -106,6 +111,17 @@ export default function AvatarScreen({ navigation }) {
       <Pressable style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
         <Text style={styles.profileText}>Open Profile</Text>
       </Pressable>
+
+      <Modal visible={showFullBody} transparent animationType="fade">
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowFullBody(false)}>
+          <View style={styles.modalCard}>
+            <AvatarSprite avatarClass={avatar.class} bodyStage={avatar.bodyStage} size={200} idle />
+            <Text style={styles.modalName}>{user?.name}</Text>
+            <Text style={styles.modalStage}>Stage {avatar.bodyStage}</Text>
+            <Text style={styles.modalHint}>Tap anywhere to close</Text>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -115,6 +131,7 @@ const styles = StyleSheet.create({
   top: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 8 },
   name: { color: '#fff', fontSize: 24, fontWeight: '800' },
   stage: { color: colors.textSecondary, fontWeight: '700' },
+  tapHint: { color: '#666', fontSize: 11 },
   avatarShape: { height: 140, borderTopLeftRadius: 60, borderTopRightRadius: 60, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, marginTop: 8 },
   row: { flexDirection: 'row', gap: 10, marginHorizontal: 14, marginTop: 14 },
   section: { marginTop: 16, marginHorizontal: 14 },
@@ -148,5 +165,10 @@ const styles = StyleSheet.create({
   editBtn: { marginHorizontal: 14, marginTop: 6, borderRadius: radius.button, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   editBtnText: { color: '#fff', fontWeight: '700' },
   profileBtn: { marginHorizontal: 14, marginBottom: 24, marginTop: 8, backgroundColor: colors.primary, borderRadius: radius.button, padding: 12, alignItems: 'center' },
-  profileText: { color: '#fff', fontWeight: '800' }
+  profileText: { color: '#fff', fontWeight: '800' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalCard: { backgroundColor: '#0c0c0c', borderRadius: 18, borderWidth: 1, borderColor: '#222', padding: 20, alignItems: 'center', gap: 6 },
+  modalName: { color: '#fff', fontWeight: '800', fontSize: 18, marginTop: 8 },
+  modalStage: { color: colors.textSecondary },
+  modalHint: { color: '#555', fontSize: 11, marginTop: 4 }
 });

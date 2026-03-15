@@ -20,7 +20,8 @@ const LOOKUPS = {
   hairColor: buildLookup(FACE_OPTIONS.hairColor),
   skinTone:  buildLookup(FACE_OPTIONS.skinTone),
   beard:     buildLookup(FACE_OPTIONS.beard),
-  eyebrow:   buildLookup(FACE_OPTIONS.eyebrow),
+  eyebrow:      buildLookup(FACE_OPTIONS.eyebrow),
+  eyebrowColor: buildLookup(FACE_OPTIONS.eyebrowColor),
 };
 
 // Body build per class — progressively more muscular
@@ -55,7 +56,9 @@ function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}
     LOOKUPS.hairStyle[faceOptions.faceHairStyleId] ? `${LOOKUPS.hairStyle[faceOptions.faceHairStyleId]} hairstyle` : null,
     LOOKUPS.hairColor[faceOptions.faceHairColorId] ? `${LOOKUPS.hairColor[faceOptions.faceHairColorId]} hair color` : null,
     LOOKUPS.beard[faceOptions.faceBeardId] != null ? LOOKUPS.beard[faceOptions.faceBeardId] : null,
-    LOOKUPS.eyebrow[faceOptions.faceEyebrowId] ? `${LOOKUPS.eyebrow[faceOptions.faceEyebrowId]} eyebrows` : null,
+    LOOKUPS.eyebrow[faceOptions.faceEyebrowId]
+      ? `${LOOKUPS.eyebrowColor[faceOptions.faceEyebrowColorId] || ''} ${LOOKUPS.eyebrow[faceOptions.faceEyebrowId]} eyebrows`.trim()
+      : null,
   ].filter(Boolean).join(', ');
 
   const outfit = 'wearing a red athletic tank top, black shorts, white sneakers';
@@ -85,7 +88,8 @@ function buildFaceOptionsFromUser(user = {}) {
     faceHairColorId: user.faceHairColorId,
     faceSkinToneId: user.faceSkinToneId,
     faceBeardId: user.faceBeardId,
-    faceEyebrowId: user.faceEyebrowId
+    faceEyebrowId: user.faceEyebrowId,
+    faceEyebrowColorId: user.faceEyebrowColorId
   };
 }
 

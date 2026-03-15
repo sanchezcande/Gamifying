@@ -17,6 +17,8 @@ const leaderboardRoutes = require('./routes/leaderboard.routes');
 const competitionRoutes = require('./routes/competition.routes');
 const gymRoutes = require('./routes/gym.routes');
 const sessionRoutes = require('./routes/session.routes');
+const adminRoutes = require('./routes/admin.routes');
+const isGymOwner = require('./middleware/isGymOwner');
 
 const app = express();
 app.use(cors());
@@ -41,6 +43,7 @@ app.use('/api/leaderboard', auth, avatarCreated, leaderboardRoutes);
 app.use('/api/competitions', auth, avatarCreated, competitionRoutes);
 app.use('/api/gyms', auth, gymRoutes);
 app.use('/api/sessions', auth, avatarCreated, sessionRoutes);
+app.use('/api/admin', auth, isGymOwner, adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, data: null, error: 'Route not found' });

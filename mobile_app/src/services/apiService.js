@@ -58,11 +58,7 @@ class ApiService {
   }
 
   async createAvatar(payload) {
-    return this.unwrap(await this.client.post('/auth/create-avatar', payload, { timeout: 60000 }));
-  }
-
-  async updateProfilePhoto(profilePhoto) {
-    return this.unwrap(await this.client.put('/auth/profile-photo', { profilePhoto }));
+    return this.unwrap(await this.client.post('/auth/create-avatar', payload));
   }
 
   async checkIn() {
