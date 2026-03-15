@@ -137,6 +137,10 @@ class ApiService {
     return this.unwrap(await this.client.get(`/gyms/${gymId}`));
   }
 
+  async getGymMembers(gymId) {
+    return this.unwrap(await this.client.get(`/gyms/${gymId}/members`));
+  }
+
   async getSessions() {
     return this.unwrap(await this.client.get('/sessions'));
   }

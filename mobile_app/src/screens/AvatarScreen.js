@@ -7,6 +7,7 @@ import ClassBadge from '../components/ClassBadge';
 import StatCard from '../components/StatCard';
 import XPBar from '../components/XPBar';
 import LoadingScreen from '../components/LoadingScreen';
+import AvatarCircle from '../components/AvatarCircle';
 import { colors, radius } from '../theme/theme';
 import { skinToneColor, timeLeftLabel } from '../utils/avatar';
 
@@ -36,6 +37,14 @@ export default function AvatarScreen({ navigation }) {
           <ClassBadge avatarClass={avatar.class} />
           <Text style={styles.stage}>Stage {avatar.bodyStage}</Text>
         </View>
+        <AvatarCircle
+          name={user?.name}
+          avatarClass={avatar.class}
+          size="large"
+          faceOptions={avatar.faceOptions}
+          profilePhoto={avatar.profilePhoto || user?.profilePhoto}
+          activeSupplements={avatar.activeSupplements}
+        />
         <View style={[styles.avatarShape, { backgroundColor: skinToneColor(avatar.faceOptions?.faceSkinToneId), width: widthByStage[avatar.bodyStage] || 50 }]} />
       </LinearGradient>
 

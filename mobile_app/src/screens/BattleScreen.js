@@ -85,7 +85,13 @@ function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
             {/* Fighters preview */}
             <View style={c.fightersRow}>
               <View style={c.fighterSide}>
-                <AvatarCircle name={me?.name} avatarClass={me?.avatarClass} size="large" activeSupplements={me?.activeSupplements || []} />
+                <AvatarCircle
+                  name={me?.name}
+                  avatarClass={me?.avatarClass}
+                  size="large"
+                  activeSupplements={me?.activeSupplements || []}
+                  profilePhoto={me?.profilePhoto}
+                />
                 <Text style={c.fighterName}>{me?.name}</Text>
                 <Text style={[c.moveLabel, { color: myMove.color }]}>{myMove.icon} {myMove.name}</Text>
               </View>
@@ -95,7 +101,12 @@ function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
               </View>
 
               <View style={c.fighterSide}>
-                <AvatarCircle name={target.name} avatarClass={target.avatarClass} size="large" />
+                <AvatarCircle
+                  name={target.name}
+                  avatarClass={target.avatarClass}
+                  size="large"
+                  profilePhoto={target.profilePhoto}
+                />
                 <Text style={c.fighterName}>{target.name}</Text>
                 <Text style={[c.moveLabel, { color: theirMove.color }]}>{theirMove.icon} {theirMove.name}</Text>
               </View>
@@ -665,10 +676,10 @@ export default function BattleScreen() {
     setLoading(true);
     try {
       const [membersRes] = await Promise.all([
-        apiService.getBodybuilding(user.gymId),
+        apiService.getGymMembers(user.gymId),
         loadHistory(user.id),
       ]);
-      setMembers((membersRes.data || []).filter(m => m.userId && m.userId !== user.id));
+      setMembers((membersRes.data || []).filter(m => m.id && m.id !== user.id));
     } catch (e) {
       Alert.alert('Battle', e.message);
     } finally {
@@ -682,7 +693,7 @@ export default function BattleScreen() {
     if (!challengeTarget) return;
     try {
       setFighting(true);
-      const result = await challenge(challengeTarget.userId);
+      const result = await challenge(challengeTarget.id);
       setChallengeTarget(null);
       setBattleState({ open: true, result, target: challengeTarget });
     } catch (e) {
@@ -703,7 +714,7 @@ export default function BattleScreen() {
 
       <FlatList
         data={members}
-        keyExtractor={item => item.userId}
+        keyExtractor={item => item.id}
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
@@ -736,7 +747,24 @@ export default function BattleScreen() {
           const move = CLASS_MOVES[item.avatarClass] || CLASS_MOVES.ROOKIE;
           return (
             <View style={[styles.memberRow, { borderLeftColor: move.color, borderLeftWidth: 3 }]}>
-              <AvatarCircle name={item.name} avatarClass={item.avatarClass} size="small" />
+              <AvatarCircle
+                name={item.name}
+                avatarClass={item.avatarClass}
+                size="small"
+                profilePhoto={item.profilePhoto}
+                faceOptions={{
+                  faceJawId: item.faceJawId,
+                  faceCheeksId: item.faceCheeksId,
+                  faceEyeShapeId: item.faceEyeShapeId,
+                  faceEyeColorId: item.faceEyeColorId,
+                  faceNoseId: item.faceNoseId,
+                  faceHairStyleId: item.faceHairStyleId,
+                  faceHairColorId: item.faceHairColorId,
+                  faceSkinToneId: item.faceSkinToneId,
+                  faceBeardId: item.faceBeardId,
+                  faceEyebrowId: item.faceEyebrowId,
+                }}
+              />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.memberName}>{item.name}</Text>
                 <Text style={[styles.moveName, { color: move.color }]}>{move.icon} {move.name}</Text>
