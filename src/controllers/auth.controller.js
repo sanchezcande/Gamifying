@@ -5,6 +5,7 @@ const { ok, fail } = require('../utils/response');
 const { getAvatarClass } = require('../services/xpService');
 const { getBodyStage } = require('../services/avatarService');
 const { buildUserProfile } = require('../services/profileService');
+const { buildAvatarImageUrl } = require('../services/avatarImageService');
 
 function signToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -76,7 +77,8 @@ async function createAvatar(req, res) {
       faceHairColorId,
       faceSkinToneId,
       faceBeardId,
-      faceEyebrowId
+      faceEyebrowId,
+      imageVariant
     } = req.body;
 
     if (!gender) return fail(res, 400, 'Gender is required');
@@ -95,6 +97,24 @@ async function createAvatar(req, res) {
         faceSkinToneId,
         faceBeardId,
         faceEyebrowId,
+        profilePhoto: buildAvatarImageUrl({
+          name: req.user.name,
+          avatarClass: getAvatarClass(req.user.xp),
+          gender,
+          faceOptions: {
+            faceJawId,
+            faceCheeksId,
+            faceEyeShapeId,
+            faceEyeColorId,
+            faceNoseId,
+            faceHairStyleId,
+            faceHairColorId,
+            faceSkinToneId,
+            faceBeardId,
+            faceEyebrowId
+          },
+          imageVariant
+        }),
         avatarClass: getAvatarClass(req.user.xp),
         avatarBodyStage: getBodyStage(req.user.statMuscle + req.user.statEndurance + req.user.statPower)
       }

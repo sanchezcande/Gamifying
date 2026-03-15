@@ -30,12 +30,12 @@ function nameSeed(name = '') {
   return hash % 99999;
 }
 
-function avatarUrl(name, avatarClass, faceOptions) {
+function avatarUrl(name, avatarClass, faceOptions, imageVariant = 0) {
   const base = CLASS_PROMPTS[avatarClass] || CLASS_PROMPTS.ROOKIE;
   const faceDesc = faceOptions ? buildFacePrompt(faceOptions) : '';
   const fullPrompt = faceDesc ? `${faceDesc}, ${base}` : base;
   const prompt = encodeURIComponent(fullPrompt);
-  const seed = nameSeed(name);
+  const seed = (nameSeed(name) + Number(imageVariant || 0) * 97) % 99999;
   return `https://image.pollinations.ai/prompt/${prompt}?width=256&height=256&nologo=true&seed=${seed}&model=flux`;
 }
 
@@ -48,10 +48,11 @@ function getSupplementGlow(activeSupplements = []) {
   return null;
 }
 
-export default function AvatarCircle({ name, avatarClass, size = 'medium', activeSupplements = [], faceOptions }) {
+export default function AvatarCircle({ name, avatarClass, size = 'medium', activeSupplements = [], faceOptions, profilePhoto, imageVariant = 0 }) {
   const dimension = sizes[size] || sizes.medium;
   const glowColor = getSupplementGlow(activeSupplements);
   const borderColor = glowColor || CLASS_BORDER[avatarClass] || '#444';
+  const sourceUri = profilePhoto || avatarUrl(name, avatarClass, faceOptions, imageVariant);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [imgError, setImgError] = useState(false);
 
@@ -69,6 +70,10 @@ export default function AvatarCircle({ name, avatarClass, size = 'medium', activ
     loop.start();
     return () => loop.stop();
   }, [glowColor]);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [sourceUri]);
 
   return (
     <Animated.View
@@ -94,7 +99,7 @@ export default function AvatarCircle({ name, avatarClass, size = 'medium', activ
         </Text>
       ) : (
         <Image
-          source={{ uri: avatarUrl(name, avatarClass, faceOptions) }}
+          source={{ uri: sourceUri }}
           style={{ width: dimension - 4, height: dimension - 4, borderRadius: (dimension - 4) / 2 }}
           onError={() => setImgError(true)}
         />

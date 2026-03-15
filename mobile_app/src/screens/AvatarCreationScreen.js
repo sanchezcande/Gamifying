@@ -27,6 +27,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
   const [face, setFace] = useState(route.params?.initialFace ? { ...defaultFace, ...route.params.initialFace } : defaultFace);
   const [starter, setStarter] = useState('Street Fighter');
   const [options, setOptions] = useState(null);
+  const [imageVariant, setImageVariant] = useState(0);
 
   useEffect(() => {
     apiService
@@ -41,7 +42,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
   const save = async () => {
     try {
       setLoading(true);
-      await createAvatar({ gender, ...face });
+      await createAvatar({ gender, ...face, imageVariant });
       if (editing) {
         navigation.goBack();
       } else {
@@ -83,8 +84,12 @@ export default function AvatarCreationScreen({ navigation, route }) {
               avatarClass={user?.avatarClass || 'ROOKIE'}
               size="large"
               faceOptions={face}
+              imageVariant={imageVariant}
             />
-            <Text style={styles.previewHint}>Preview updates after saving</Text>
+            <Text style={styles.previewHint}>Vista previa en vivo con IA</Text>
+            <Pressable style={styles.regenBtn} onPress={() => setImageVariant((v) => v + 1)}>
+              <Text style={styles.regenBtnText}>🎨 Regenerar con IA</Text>
+            </Pressable>
           </View>
 
           {options && (
@@ -177,6 +182,16 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontWeight: '800' },
   preview: { alignItems: 'center', justifyContent: 'center', marginBottom: 14, gap: 8 },
   previewHint: { color: colors.textSecondary, fontSize: 11 },
+  regenBtn: {
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: '#0b1220',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  regenBtnText: { color: '#c7d2fe', fontSize: 12, fontWeight: '700' },
   optionRow: { marginBottom: 10 },
   sectionTitle: { color: colors.primary, marginBottom: 8, fontWeight: '700', textTransform: 'uppercase', fontSize: 12 },
   chip: {

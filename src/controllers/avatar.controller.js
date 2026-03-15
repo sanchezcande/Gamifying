@@ -32,6 +32,7 @@ async function getAvatar(req, res) {
       statPower: user.statPower,
       xp: user.xp,
       gymCoins: user.gymCoins,
+      profilePhoto: user.profilePhoto,
       gender: user.avatarGender,
       faceOptions: {
         faceJawId: user.faceJawId,
