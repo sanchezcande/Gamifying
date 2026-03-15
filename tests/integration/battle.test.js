@@ -94,6 +94,7 @@ describe('POST /api/battles/challenge/:defenderId', () => {
 describe('GET /api/battles/history/:userId', () => {
   test('returns battle history for user', async () => {
     authChallenger();
+    prisma.user.findUnique.mockResolvedValueOnce(challenger);
     prisma.battle.findMany.mockResolvedValue([
       {
         id: 'b1',
@@ -120,6 +121,7 @@ describe('GET /api/battles/history/:userId', () => {
 
   test('returns empty array when no battles', async () => {
     authChallenger();
+    prisma.user.findUnique.mockResolvedValueOnce(challenger);
     prisma.battle.findMany.mockResolvedValue([]);
 
     const res = await request(app)
@@ -128,6 +130,18 @@ describe('GET /api/battles/history/:userId', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(0);
+  });
+
+  test('returns 403 when accessing another gym member as non-owner', async () => {
+    const outsider = mockUser({ id: 'outsider', gymId: 'gym-OTHER' });
+    authChallenger();
+    prisma.user.findUnique.mockResolvedValueOnce(outsider);
+
+    const res = await request(app)
+      .get(`/api/battles/history/${outsider.id}`)
+      .set('Authorization', `Bearer ${makeToken(challenger.id)}`);
+
+    expect(res.status).toBe(403);
   });
 });
 

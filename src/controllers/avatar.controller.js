@@ -16,6 +16,11 @@ async function getAvatar(req, res) {
       }
     });
     if (!user) return fail(res, 404, 'User not found');
+    if (userId !== req.user.id) {
+      if (!req.user.gymId || req.user.gymId !== user.gymId) {
+        return fail(res, 403, 'Forbidden');
+      }
+    }
 
     const equippedCosmetics = user.userItems.filter(
       (i) => i.shopItem.type === 'COSMETIC' && i.isEquipped

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
@@ -83,13 +83,8 @@ export default function AvatarCreationScreen({ navigation, route }) {
               name={previewName}
               avatarClass={user?.avatarClass || 'ROOKIE'}
               size="large"
-              faceOptions={face}
-              imageVariant={imageVariant}
             />
-            <Text style={styles.previewHint}>Vista previa en vivo con IA</Text>
-            <Pressable style={styles.regenBtn} onPress={() => setImageVariant((v) => v + 1)}>
-              <Text style={styles.regenBtnText}>🎨 Regenerar con IA</Text>
-            </Pressable>
+            <Text style={styles.previewHint}>La imagen final se genera con IA al guardar</Text>
           </View>
 
           {options && (

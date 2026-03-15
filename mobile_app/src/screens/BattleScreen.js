@@ -752,18 +752,6 @@ export default function BattleScreen() {
                 avatarClass={item.avatarClass}
                 size="small"
                 profilePhoto={item.profilePhoto}
-                faceOptions={{
-                  faceJawId: item.faceJawId,
-                  faceCheeksId: item.faceCheeksId,
-                  faceEyeShapeId: item.faceEyeShapeId,
-                  faceEyeColorId: item.faceEyeColorId,
-                  faceNoseId: item.faceNoseId,
-                  faceHairStyleId: item.faceHairStyleId,
-                  faceHairColorId: item.faceHairColorId,
-                  faceSkinToneId: item.faceSkinToneId,
-                  faceBeardId: item.faceBeardId,
-                  faceEyebrowId: item.faceEyebrowId,
-                }}
               />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.memberName}>{item.name}</Text>

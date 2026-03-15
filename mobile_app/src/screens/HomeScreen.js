@@ -102,7 +102,7 @@ export default function HomeScreen({ navigation }) {
 
           {/* Hero card */}
           <Pressable style={styles.heroCard} onPress={() => navigation.navigate('Profile')}>
-            <AvatarCircle name={user?.name} avatarClass={user?.avatarClass} size="large" activeSupplements={user?.activeSupplements || []} faceOptions={faceOptionsFromUser(user)} />
+            <AvatarCircle name={user?.name} avatarClass={user?.avatarClass} size="large" activeSupplements={user?.activeSupplements || []} profilePhoto={user?.profilePhoto} />
             <View style={styles.heroInfo}>
               <View style={styles.heroNameRow}>
                 <Text style={styles.heroName} numberOfLines={1}>{user?.name}</Text>

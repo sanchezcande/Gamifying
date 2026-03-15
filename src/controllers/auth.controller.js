@@ -5,7 +5,7 @@ const { ok, fail } = require('../utils/response');
 const { getAvatarClass } = require('../services/xpService');
 const { getBodyStage } = require('../services/avatarService');
 const { buildUserProfile } = require('../services/profileService');
-const { buildAvatarImageUrl } = require('../services/avatarImageService');
+const { generateAvatarImage, buildAvatarImageUrl } = require('../services/avatarImageService');
 
 function signToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -83,38 +83,35 @@ async function createAvatar(req, res) {
 
     if (!gender) return fail(res, 400, 'Gender is required');
 
+    const faceOptions = {
+      faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
+      faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
+      faceBeardId, faceEyebrowId
+    };
+
+    // Generate avatar image with DALL-E, fall back to Pollinations URL on error
+    let profilePhoto;
+    try {
+      profilePhoto = await generateAvatarImage({ gender, avatarClass: getAvatarClass(req.user.xp), faceOptions });
+    } catch (imgErr) {
+      console.error('DALL-E generation failed, using fallback:', imgErr.message);
+      profilePhoto = buildAvatarImageUrl({
+        name: req.user.name,
+        avatarClass: getAvatarClass(req.user.xp),
+        gender,
+        faceOptions,
+        imageVariant
+      });
+    }
+
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: {
         avatarGender: gender,
-        faceJawId,
-        faceCheeksId,
-        faceEyeShapeId,
-        faceEyeColorId,
-        faceNoseId,
-        faceHairStyleId,
-        faceHairColorId,
-        faceSkinToneId,
-        faceBeardId,
-        faceEyebrowId,
-        profilePhoto: buildAvatarImageUrl({
-          name: req.user.name,
-          avatarClass: getAvatarClass(req.user.xp),
-          gender,
-          faceOptions: {
-            faceJawId,
-            faceCheeksId,
-            faceEyeShapeId,
-            faceEyeColorId,
-            faceNoseId,
-            faceHairStyleId,
-            faceHairColorId,
-            faceSkinToneId,
-            faceBeardId,
-            faceEyebrowId
-          },
-          imageVariant
-        }),
+        faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
+        faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
+        faceBeardId, faceEyebrowId,
+        profilePhoto,
         avatarClass: getAvatarClass(req.user.xp),
         avatarBodyStage: getBodyStage(req.user.statMuscle + req.user.statEndurance + req.user.statPower)
       }

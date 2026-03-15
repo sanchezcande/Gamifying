@@ -76,7 +76,7 @@ describe('GET /api/gyms/:gymId', () => {
   });
 
   test('returns 404 if gym not found', async () => {
-    const user = mockUser();
+    const user = mockUser({ gymId: 'nonexistent' });
     prisma.user.findUnique.mockResolvedValueOnce(user);
     prisma.gym.findUnique.mockResolvedValue(null);
 
@@ -137,5 +137,73 @@ describe('GET /api/gyms/:gymId/members', () => {
       .set('Authorization', `Bearer ${makeToken(user.id)}`);
 
     expect(res.status).toBe(404);
+  });
+
+  test('returns 403 if requesting members of another gym', async () => {
+    const user = mockUser({ gymId: 'gym-1' });
+    prisma.user.findUnique.mockResolvedValueOnce(user);
+
+    const res = await request(app)
+      .get('/api/gyms/other-gym/members')
+      .set('Authorization', `Bearer ${makeToken(user.id)}`);
+
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('GET /api/gyms/:gymId/qr-code', () => {
+  test('returns qr data for gym owner', async () => {
+    const owner = mockOwner({ id: 'owner-1', gymId: 'gym-1' });
+    prisma.user.findUnique.mockResolvedValueOnce(owner);
+    prisma.gym.findUnique.mockResolvedValue({ ...mockGym(), ownerId: owner.id });
+
+    const res = await request(app)
+      .get('/api/gyms/gym-1/qr-code')
+      .set('Authorization', `Bearer ${makeToken(owner.id)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.qrPayload).toMatch(/gamifying:checkin/);
+    expect(res.body.data.apiKey).toBeTruthy();
+  });
+
+  test('returns 403 if not the gym owner', async () => {
+    const owner = mockOwner({ id: 'owner-1', gymId: 'gym-1' });
+    prisma.user.findUnique.mockResolvedValueOnce(owner);
+    prisma.gym.findUnique.mockResolvedValue({ ...mockGym(), ownerId: 'someone-else' });
+
+    const res = await request(app)
+      .get('/api/gyms/gym-1/qr-code')
+      .set('Authorization', `Bearer ${makeToken(owner.id)}`);
+
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('POST /api/gyms/:gymId/regenerate-secrets', () => {
+  test('regenerates secrets for gym owner', async () => {
+    const owner = mockOwner({ id: 'owner-1', gymId: 'gym-1' });
+    prisma.user.findUnique.mockResolvedValueOnce(owner);
+    prisma.gym.findUnique.mockResolvedValue({ ...mockGym(), ownerId: owner.id });
+    prisma.gym.update.mockResolvedValue({ ...mockGym(), ownerId: owner.id, qrSecret: 'new-qr', apiKey: 'new-key' });
+
+    const res = await request(app)
+      .post('/api/gyms/gym-1/regenerate-secrets')
+      .set('Authorization', `Bearer ${makeToken(owner.id)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.qrPayload).toMatch(/gamifying:checkin/);
+    expect(res.body.data.apiKey).toBe('new-key');
+  });
+
+  test('returns 403 if not the gym owner', async () => {
+    const owner = mockOwner({ id: 'owner-1', gymId: 'gym-1' });
+    prisma.user.findUnique.mockResolvedValueOnce(owner);
+    prisma.gym.findUnique.mockResolvedValue({ ...mockGym(), ownerId: 'someone-else' });
+
+    const res = await request(app)
+      .post('/api/gyms/gym-1/regenerate-secrets')
+      .set('Authorization', `Bearer ${makeToken(owner.id)}`);
+
+    expect(res.status).toBe(403);
   });
 });

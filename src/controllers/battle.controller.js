@@ -67,6 +67,14 @@ async function challenge(req, res) {
 async function history(req, res) {
   try {
     const { userId } = req.params;
+    const target = await prisma.user.findUnique({ where: { id: userId } });
+    if (!target) return fail(res, 404, 'User not found');
+    if (userId !== req.user.id) {
+      if (!req.user.isOwner || req.user.gymId !== target.gymId) {
+        return fail(res, 403, 'Forbidden');
+      }
+    }
+
     const battles = await prisma.battle.findMany({
       where: {
         OR: [{ challengerId: userId }, { defenderId: userId }]

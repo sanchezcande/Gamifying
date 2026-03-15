@@ -110,4 +110,17 @@ describe('GET /api/checkins/user/:userId', () => {
 
     expect(res.status).toBe(404);
   });
+
+  test('returns 403 when accessing another user as non-owner', async () => {
+    const user = mockUser();
+    const other = mockUser({ id: 'other-user', gymId: 'gym-OTHER' });
+    authUser(user);
+    prisma.user.findUnique.mockResolvedValueOnce(other);
+
+    const res = await request(app)
+      .get(`/api/checkins/user/${other.id}`)
+      .set('Authorization', `Bearer ${makeToken(user.id)}`);
+
+    expect(res.status).toBe(403);
+  });
 });

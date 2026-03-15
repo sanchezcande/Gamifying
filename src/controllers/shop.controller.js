@@ -62,6 +62,11 @@ async function getInventory(req, res) {
     const { userId } = req.params;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return fail(res, 404, 'User not found');
+    if (userId !== req.user.id) {
+      if (!req.user.isOwner || req.user.gymId !== user.gymId) {
+        return fail(res, 403, 'Forbidden');
+      }
+    }
 
     const userItems = await prisma.userItem.findMany({
       where: { userId },

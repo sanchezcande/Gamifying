@@ -1,8 +1,8 @@
 const prisma = require('../utils/prisma');
 
-async function getActiveSupplements(userId) {
+async function getActiveSupplements(userId, tx = prisma) {
   const now = new Date();
-  return prisma.userItem.findMany({
+  return tx.userItem.findMany({
     where: {
       userId,
       isActive: true,

@@ -98,10 +98,22 @@ describe('POST /api/purchases', () => {
     const res = await request(app)
       .post('/api/purchases')
       .set('Authorization', `Bearer ${makeToken(user.id)}`)
-      .send({ gymId: 'nonexistent', amount: 10 });
+      .send({ gymId: user.gymId, amount: 10 });
 
     expect(res.status).toBe(404);
     expect(res.body.error).toMatch(/gym not found/i);
+  });
+
+  test('returns 403 if gymId does not match user gym', async () => {
+    authUser();
+    prisma.gym.findUnique.mockResolvedValue(mockGym({ id: 'other-gym' }));
+
+    const res = await request(app)
+      .post('/api/purchases')
+      .set('Authorization', `Bearer ${makeToken(user.id)}`)
+      .send({ gymId: 'other-gym', amount: 10 });
+
+    expect(res.status).toBe(403);
   });
 });
 
@@ -130,5 +142,17 @@ describe('GET /api/purchases/user/:userId', () => {
       .set('Authorization', `Bearer ${makeToken(user.id)}`);
 
     expect(res.status).toBe(404);
+  });
+
+  test('returns 403 when accessing another user as non-owner', async () => {
+    const other = mockUser({ id: 'other-user', gymId: 'gym-OTHER' });
+    authUser();
+    prisma.user.findUnique.mockResolvedValueOnce(other);
+
+    const res = await request(app)
+      .get(`/api/purchases/user/${other.id}`)
+      .set('Authorization', `Bearer ${makeToken(user.id)}`);
+
+    expect(res.status).toBe(403);
   });
 });

@@ -9,6 +9,10 @@ async function createPurchase(req, res) {
       return fail(res, 400, 'Invalid purchase payload');
     }
 
+    if (req.user.gymId !== gymId) {
+      return fail(res, 403, 'Cannot register purchases for another gym');
+    }
+
     const gym = await prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym) return fail(res, 404, 'Gym not found');
 
@@ -106,6 +110,11 @@ async function getUserPurchases(req, res) {
     const { userId } = req.params;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return fail(res, 404, 'User not found');
+    if (userId !== req.user.id) {
+      if (!req.user.isOwner || req.user.gymId !== user.gymId) {
+        return fail(res, 403, 'Forbidden');
+      }
+    }
 
     const purchases = await prisma.purchase.findMany({
       where: { userId },

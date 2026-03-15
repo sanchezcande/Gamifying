@@ -57,12 +57,15 @@ const prisma = {
   },
   sessionJoin: {
     findUnique: jest.fn(),
+    count: jest.fn(),
     create: jest.fn()
   },
   sessionMessage: {
     findMany: jest.fn(),
     create: jest.fn()
   },
+  $executeRaw: jest.fn(),
+  $queryRaw: jest.fn(),
   $transaction: jest.fn(),
   $disconnect: jest.fn()
 };

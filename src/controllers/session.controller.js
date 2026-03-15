@@ -80,23 +80,31 @@ async function joinSession(req, res) {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user?.gymId) return fail(res, 400, 'You must belong to a gym');
 
-    const session = await prisma.gymSession.findUnique({
-      where: { id },
-      include: { joiners: true, user: { select: { pushToken: true, name: true } } }
-    });
+    const { join, session } = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`session:${id}`}))`;
 
-    if (!session) return fail(res, 404, 'Session not found');
-    if (session.gymId !== user.gymId) return fail(res, 403, 'Session is not from your gym');
-    if (session.cancelled) return fail(res, 400, 'Session is cancelled');
-    if (session.userId === user.id) return fail(res, 400, 'You cannot join your own session');
+      const sessionRecord = await tx.gymSession.findUnique({
+        where: { id },
+        include: { user: { select: { pushToken: true, name: true } } }
+      });
 
-    // Check spots (0 = unlimited)
-    if (session.spotsAvailable > 0 && session.joiners.length >= session.spotsAvailable) {
-      return fail(res, 400, 'Session is full');
-    }
+      if (!sessionRecord) throw { status: 404, message: 'Session not found' };
+      if (sessionRecord.gymId !== user.gymId) throw { status: 403, message: 'Session is not from your gym' };
+      if (sessionRecord.cancelled) throw { status: 400, message: 'Session is cancelled' };
+      if (sessionRecord.userId === user.id) throw { status: 400, message: 'You cannot join your own session' };
 
-    const join = await prisma.sessionJoin.create({
-      data: { sessionId: id, userId: user.id }
+      if (sessionRecord.spotsAvailable > 0) {
+        const joinCount = await tx.sessionJoin.count({ where: { sessionId: id } });
+        if (joinCount >= sessionRecord.spotsAvailable) {
+          throw { status: 400, message: 'Session is full' };
+        }
+      }
+
+      const joinRecord = await tx.sessionJoin.create({
+        data: { sessionId: id, userId: user.id }
+      });
+
+      return { join: joinRecord, session: sessionRecord };
     });
 
     // Notify session owner
@@ -110,6 +118,7 @@ async function joinSession(req, res) {
 
     return ok(res, join);
   } catch (error) {
+    if (error.status) return fail(res, error.status, error.message);
     if (error.code === 'P2002') return fail(res, 400, 'Already joined this session');
     return fail(res, 500, error.message);
   }

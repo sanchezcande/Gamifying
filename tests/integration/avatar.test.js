@@ -62,6 +62,18 @@ describe('GET /api/avatar/:userId', () => {
     expect(res.status).toBe(404);
   });
 
+  test('returns 403 when accessing user from another gym', async () => {
+    authUser();
+    const other = mockUser({ id: 'other-user', gymId: 'gym-OTHER' });
+    prisma.user.findUnique.mockResolvedValueOnce(other);
+
+    const res = await request(app)
+      .get(`/api/avatar/${other.id}`)
+      .set('Authorization', `Bearer ${makeToken(user.id)}`);
+
+    expect(res.status).toBe(403);
+  });
+
   test('returns 400 if avatar not created', async () => {
     const noAvatarUser = { ...user, avatarGender: null };
     prisma.user.findUnique.mockResolvedValueOnce(noAvatarUser); // auth — no avatar → middleware blocks

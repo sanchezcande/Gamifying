@@ -174,7 +174,7 @@ describe('GET /api/gyms/:gymId/qr-code', () => {
     const owner = mockOwner();
     authUser(owner);
 
-    const gym = mockGym({ qrSecret: 'secret-abc', apiKey: 'key-xyz' });
+    const gym = mockGym({ ownerId: owner.id, qrSecret: 'secret-abc', apiKey: 'key-xyz' });
     prisma.gym.findUnique.mockResolvedValueOnce(gym);
 
     const res = await request(app)
@@ -189,6 +189,7 @@ describe('GET /api/gyms/:gymId/qr-code', () => {
   test('returns 403 for non-owner', async () => {
     const user = mockUser({ isOwner: false });
     authUser(user);
+    prisma.gym.findUnique.mockResolvedValueOnce(mockGym({ ownerId: 'someone-else' }));
 
     const res = await request(app)
       .get('/api/gyms/gym-1/qr-code')

@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, Text } from 'react-native';
 import { getInitials } from '../utils/avatar';
-import { buildFacePrompt } from '../utils/faceLabels';
 import { colors } from '../theme/theme';
 
-const sizes = { small: 36, medium: 54, large: 82 };
+const sizes = { small: 36, medium: 54, large: 110 };
 
 const CLASS_BORDER = {
   WARRIOR:  colors.primary,
@@ -13,30 +12,9 @@ const CLASS_BORDER = {
   ROOKIE:   '#555555'
 };
 
-// Prompt per class — generates a unique AI fighter portrait
-const CLASS_PROMPTS = {
-  WARRIOR:  'muscular male bodybuilder warrior fighter portrait, red fire aura, dramatic dark background, intense expression, fighting game character art style, close up face and shoulders, no text',
-  CHAMPION: 'athletic male champion fighter portrait, blue electric aura, dark background, powerful expression, fighting game character art style, close up face and shoulders, no text',
-  FIGHTER:  'strong male gym fighter portrait, green energy glow, dark background, determined expression, fighting game character art style, close up face and shoulders, no text',
-  ROOKIE:   'young male rookie fighter portrait, grey tones, dark background, motivated expression, fighting game character art style, close up face and shoulders, no text'
-};
-
-// Stable numeric seed from name string
-function nameSeed(name = '') {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  }
-  return hash % 99999;
-}
-
-function avatarUrl(name, avatarClass, faceOptions, imageVariant = 0) {
-  const base = CLASS_PROMPTS[avatarClass] || CLASS_PROMPTS.ROOKIE;
-  const faceDesc = faceOptions ? buildFacePrompt(faceOptions) : '';
-  const fullPrompt = faceDesc ? `${faceDesc}, ${base}` : base;
-  const prompt = encodeURIComponent(fullPrompt);
-  const seed = (nameSeed(name) + Number(imageVariant || 0) * 97) % 99999;
-  return `https://image.pollinations.ai/prompt/${prompt}?width=256&height=256&nologo=true&seed=${seed}&model=flux`;
+function dicebearUrl(name, avatarClass) {
+  const seed = encodeURIComponent(`${name || 'avatar'}-${avatarClass}`);
+  return `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=256&backgroundColor=111111`;
 }
 
 function getSupplementGlow(activeSupplements = []) {
@@ -48,13 +26,15 @@ function getSupplementGlow(activeSupplements = []) {
   return null;
 }
 
-export default function AvatarCircle({ name, avatarClass, size = 'medium', activeSupplements = [], faceOptions, profilePhoto, imageVariant = 0 }) {
+export default function AvatarCircle({ name, avatarClass, size = 'medium', activeSupplements = [], profilePhoto }) {
   const dimension = sizes[size] || sizes.medium;
   const glowColor = getSupplementGlow(activeSupplements);
   const borderColor = glowColor || CLASS_BORDER[avatarClass] || '#444';
-  const sourceUri = profilePhoto || avatarUrl(name, avatarClass, faceOptions, imageVariant);
+  const primaryUri = profilePhoto;
+  const fallbackUri = dicebearUrl(name, avatarClass);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const [imgError, setImgError] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [allFailed, setAllFailed] = useState(false);
 
   useEffect(() => {
     if (!glowColor) {
@@ -72,8 +52,19 @@ export default function AvatarCircle({ name, avatarClass, size = 'medium', activ
   }, [glowColor]);
 
   useEffect(() => {
-    setImgError(false);
-  }, [sourceUri]);
+    setUsingFallback(false);
+    setAllFailed(false);
+  }, [primaryUri]);
+
+  const handleError = () => {
+    if (!usingFallback) {
+      setUsingFallback(true);
+    } else {
+      setAllFailed(true);
+    }
+  };
+
+  const sourceUri = !primaryUri || usingFallback ? fallbackUri : primaryUri;
 
   return (
     <Animated.View
@@ -93,7 +84,7 @@ export default function AvatarCircle({ name, avatarClass, size = 'medium', activ
         }
       ]}
     >
-      {imgError ? (
+      {allFailed ? (
         <Text style={{ color: '#fff', fontWeight: '700', fontSize: dimension * 0.28 }}>
           {getInitials(name)}
         </Text>
@@ -101,7 +92,7 @@ export default function AvatarCircle({ name, avatarClass, size = 'medium', activ
         <Image
           source={{ uri: sourceUri }}
           style={{ width: dimension - 4, height: dimension - 4, borderRadius: (dimension - 4) / 2 }}
-          onError={() => setImgError(true)}
+          onError={handleError}
         />
       )}
     </Animated.View>

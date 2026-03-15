@@ -60,6 +60,8 @@ async function getGym(req, res) {
 async function getGymMembers(req, res) {
   try {
     const { gymId } = req.params;
+    if (req.user.gymId !== gymId) return fail(res, 403, 'Forbidden');
+
     const gym = await prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym) return fail(res, 404, 'Gym not found');
 
@@ -105,6 +107,7 @@ async function getGymQrData(req, res) {
     const { gymId } = req.params;
     const gym = await prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym) return fail(res, 404, 'Gym not found');
+    if (gym.ownerId !== req.user.id) return fail(res, 403, 'Forbidden');
 
     const qrPayload = `gamifying:checkin:${gym.id}:${gym.qrSecret}`;
     return ok(res, { qrPayload, apiKey: gym.apiKey });
@@ -121,6 +124,7 @@ async function regenerateGymSecrets(req, res) {
     const { gymId } = req.params;
     const gym = await prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym) return fail(res, 404, 'Gym not found');
+    if (gym.ownerId !== req.user.id) return fail(res, 403, 'Forbidden');
 
     const crypto = require('crypto');
     const updated = await prisma.gym.update({

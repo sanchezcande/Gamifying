@@ -12,19 +12,21 @@ const {
  * Throws { status, message } on validation errors.
  */
 async function processCheckin(userId, method = 'QR') {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw { status: 404, message: 'User not found' };
-  if (!user.gymId) throw { status: 404, message: 'Gym not found' };
-
-  const today = startOfDay();
-  const alreadyToday = await prisma.checkIn.findFirst({
-    where: { userId: user.id, createdAt: { gte: today } }
-  });
-  if (alreadyToday) throw { status: 400, message: 'Already checked in today' };
-
-  const activeSupplements = await getActiveSupplements(user.id);
-
   const result = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`checkin:${userId}`}))`;
+
+    const user = await tx.user.findUnique({ where: { id: userId } });
+    if (!user) throw { status: 404, message: 'User not found' };
+    if (!user.gymId) throw { status: 404, message: 'Gym not found' };
+
+    const today = startOfDay();
+    const alreadyToday = await tx.checkIn.findFirst({
+      where: { userId: user.id, createdAt: { gte: today } }
+    });
+    if (alreadyToday) throw { status: 400, message: 'Already checked in today' };
+
+    const activeSupplements = await getActiveSupplements(user.id, tx);
+
     const nextStreak = calculateCheckinStreak(user.lastVisitDate, user.visitStreak);
     const baseRewards = getBaseCheckinRewards(nextStreak);
     const gains = applyCheckinEffects(baseRewards, activeSupplements);
@@ -60,14 +62,14 @@ async function processCheckin(userId, method = 'QR') {
       }
     });
 
-    return { gains, avatar };
+    return { gains, avatar, activeSupplements };
   });
 
   return {
     ...result.gains,
     newBodyStage: result.avatar.avatarBodyStage,
     newClass: result.avatar.avatarClass,
-    activeSupplements: activeSupplements.map((item) => item.shopItem.name)
+    activeSupplements: result.activeSupplements.map((item) => item.shopItem.name)
   };
 }
 
@@ -142,6 +144,11 @@ async function getUserCheckins(req, res) {
     const { userId } = req.params;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return fail(res, 404, 'User not found');
+    if (userId !== req.user.id) {
+      if (!req.user.isOwner || req.user.gymId !== user.gymId) {
+        return fail(res, 403, 'Forbidden');
+      }
+    }
 
     const history = await prisma.checkIn.findMany({
       where: { userId },

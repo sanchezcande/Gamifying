@@ -129,6 +129,7 @@ describe('POST /api/sessions/:id/join', () => {
     authUser();
     prisma.user.findUnique.mockResolvedValueOnce(user);
     prisma.gymSession.findUnique.mockResolvedValue(session);
+    prisma.sessionJoin.count.mockResolvedValue(0);
     prisma.sessionJoin.create.mockResolvedValue({ id: 'sj-1', sessionId: 'sess-1', userId: user.id });
 
     const res = await request(app)
@@ -181,12 +182,9 @@ describe('POST /api/sessions/:id/join', () => {
   test('returns 400 if session is full', async () => {
     authUser();
     prisma.user.findUnique.mockResolvedValueOnce(user);
-    const fullSession = {
-      ...session,
-      spotsAvailable: 2,
-      joiners: [{ userId: 'j1' }, { userId: 'j2' }]
-    };
+    const fullSession = { ...session, spotsAvailable: 2 };
     prisma.gymSession.findUnique.mockResolvedValue(fullSession);
+    prisma.sessionJoin.count.mockResolvedValue(2);
 
     const res = await request(app)
       .post('/api/sessions/sess-1/join')
@@ -200,6 +198,7 @@ describe('POST /api/sessions/:id/join', () => {
     authUser();
     prisma.user.findUnique.mockResolvedValueOnce(user);
     prisma.gymSession.findUnique.mockResolvedValue(session);
+    prisma.sessionJoin.count.mockResolvedValue(0);
     const dupError = new Error('Duplicate');
     dupError.code = 'P2002';
     prisma.sessionJoin.create.mockRejectedValue(dupError);

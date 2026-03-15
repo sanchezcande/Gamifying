@@ -41,7 +41,6 @@ export default function AvatarScreen({ navigation }) {
           name={user?.name}
           avatarClass={avatar.class}
           size="large"
-          faceOptions={avatar.faceOptions}
           profilePhoto={avatar.profilePhoto || user?.profilePhoto}
           activeSupplements={avatar.activeSupplements}
         />
