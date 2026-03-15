@@ -1,6 +1,8 @@
 /**
- * Generate face part preview thumbnails using DALL-E 3.
- * Each image shows a complete cartoon face highlighting one specific feature.
+ * Generate ISOLATED face part preview thumbnails using DALL-E 3.
+ * Each image shows ONLY the individual part (hair, eyes, nose, etc.)
+ * floating on a black background — no full faces, no characters.
+ * These are used as selector thumbnails in the character creator.
  * Run: node scripts/generateFaceAssets.js
  */
 require('dotenv').config();
@@ -15,46 +17,47 @@ const OUT_DIR = path.join(__dirname, '..', 'mobile_app', 'src', 'assets', 'face'
 
 if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 
-const BASE_STYLE = '3D cartoon chibi style, close-up face portrait, dark background, mobile game character, vibrant, clean, no text, no watermark';
+// Style lock — every part must look like it belongs to the same 3D cartoon game
+const STYLE = '3D cartoon Pixar-inspired style, solid black background, game character customization icon, vibrant colors, soft lighting, clean smooth 3D render, centered in frame, no text, no watermark, no extra objects';
 
 const ASSETS = [
-  // Hair styles
-  { file: 'hair_1_buzzcur', prompt: `male character with buzz cut hairstyle, ${BASE_STYLE}` },
-  { file: 'hair_2_fade', prompt: `male character with fade hairstyle, ${BASE_STYLE}` },
-  { file: 'hair_3_long', prompt: `male character with long flowing hair, ${BASE_STYLE}` },
-  { file: 'hair_4_curly', prompt: `male character with curly hair, ${BASE_STYLE}` },
-  { file: 'hair_5_mohawk', prompt: `male character with mohawk hairstyle, ${BASE_STYLE}` },
-  { file: 'hair_6_braids', prompt: `male character with braided hair, ${BASE_STYLE}` },
-  { file: 'hair_7_bald', prompt: `male character who is bald, smooth head, ${BASE_STYLE}` },
-  { file: 'hair_8_messy', prompt: `male character with messy tousled hair, ${BASE_STYLE}` },
+  // ── Hair styles (isolated floating hair piece, NO face underneath) ──
+  { file: 'hair_1_buzzcut', prompt: `An isolated buzz cut hairstyle shown as a floating hair piece from above, very short cropped dark hair, ${STYLE}, just the hair alone like a wig on display, no face, no head, no skin visible` },
+  { file: 'hair_2_fade',    prompt: `An isolated fade hairstyle shown as a floating hair piece, short on sides longer on top, dark hair, ${STYLE}, just the hair alone like a wig on display, no face, no head, no skin visible` },
+  { file: 'hair_3_long',    prompt: `An isolated long flowing hairstyle shown as a floating hair piece, shoulder-length straight hair, dark hair, ${STYLE}, just the hair alone like a wig on display, no face, no head, no skin visible` },
+  { file: 'hair_4_curly',   prompt: `An isolated curly hairstyle shown as a floating hair piece, bouncy curls, dark hair, ${STYLE}, just the hair alone like a wig on display, no face, no head, no skin visible` },
+  { file: 'hair_5_mohawk',  prompt: `An isolated mohawk hairstyle shown as a floating hair piece, tall spiked strip of hair, dark hair, ${STYLE}, just the hair alone like a wig on display, no face, no head, no skin visible` },
+  { file: 'hair_6_braids',  prompt: `An isolated braided hairstyle shown as a floating hair piece, two long braids, dark hair, ${STYLE}, just the hair alone like a wig on display, no face, no head, no skin visible` },
+  { file: 'hair_7_bald',    prompt: `A smooth bald head silhouette, simple round shape, no hair, ${STYLE}, minimal, just a clean smooth dome shape` },
+  { file: 'hair_8_messy',   prompt: `An isolated messy tousled hairstyle shown as a floating hair piece, spiky and wild, dark hair, ${STYLE}, just the hair alone like a wig on display, no face, no head, no skin visible` },
 
-  // Eye shapes
-  { file: 'eyes_1_almond', prompt: `character face with almond-shaped eyes, ${BASE_STYLE}` },
-  { file: 'eyes_2_round', prompt: `character face with large round eyes, ${BASE_STYLE}` },
-  { file: 'eyes_3_hooded', prompt: `character face with hooded eyes, ${BASE_STYLE}` },
-  { file: 'eyes_4_monolid', prompt: `character face with monolid eyes, ${BASE_STYLE}` },
-  { file: 'eyes_5_upturned', prompt: `character face with upturned cat-like eyes, ${BASE_STYLE}` },
-  { file: 'eyes_6_deepset', prompt: `character face with deep-set eyes, ${BASE_STYLE}` },
+  // ── Eye shapes (just a pair of cartoon eyes, NO face) ──
+  { file: 'eyes_1_almond',  prompt: `A pair of almond-shaped cartoon eyes floating in isolation, expressive with visible iris and pupil, ${STYLE}, just two eyes side by side, no face, no eyebrows, no nose, no other facial features` },
+  { file: 'eyes_2_round',   prompt: `A pair of large round cartoon eyes floating in isolation, big and expressive with visible iris and pupil, ${STYLE}, just two eyes side by side, no face, no eyebrows, no nose, no other facial features` },
+  { file: 'eyes_3_hooded',  prompt: `A pair of hooded cartoon eyes floating in isolation, partially covered upper lids, with visible iris and pupil, ${STYLE}, just two eyes side by side, no face, no eyebrows, no nose, no other facial features` },
+  { file: 'eyes_4_monolid', prompt: `A pair of monolid cartoon eyes floating in isolation, smooth lid without crease, with visible iris and pupil, ${STYLE}, just two eyes side by side, no face, no eyebrows, no nose, no other facial features` },
+  { file: 'eyes_5_upturned',prompt: `A pair of upturned cat-like cartoon eyes floating in isolation, outer corners angled up, with visible iris and pupil, ${STYLE}, just two eyes side by side, no face, no eyebrows, no nose, no other facial features` },
+  { file: 'eyes_6_deepset', prompt: `A pair of deep-set cartoon eyes floating in isolation, set back with prominent brow ridge shadow, with visible iris and pupil, ${STYLE}, just two eyes side by side, no face, no eyebrows, no nose, no other facial features` },
 
-  // Noses
-  { file: 'nose_1_button', prompt: `character face with small button nose, ${BASE_STYLE}` },
-  { file: 'nose_2_straight', prompt: `character face with straight nose, ${BASE_STYLE}` },
-  { file: 'nose_3_wide', prompt: `character face with wide nose, ${BASE_STYLE}` },
-  { file: 'nose_4_pointed', prompt: `character face with pointed nose, ${BASE_STYLE}` },
-  { file: 'nose_5_upturned', prompt: `character face with upturned nose, ${BASE_STYLE}` },
+  // ── Nose shapes (just the nose, NO face) ──
+  { file: 'nose_1_button',  prompt: `A small round button nose in isolation, cute cartoon nose, ${STYLE}, just the nose alone floating, no face, no other features, simple and clean` },
+  { file: 'nose_2_straight', prompt: `A straight narrow nose in isolation, cartoon style, ${STYLE}, just the nose alone floating, no face, no other features, simple and clean` },
+  { file: 'nose_3_wide',    prompt: `A wide flat nose in isolation, cartoon style, ${STYLE}, just the nose alone floating, no face, no other features, simple and clean` },
+  { file: 'nose_4_pointed', prompt: `A pointed sharp nose in isolation, cartoon style, ${STYLE}, just the nose alone floating, no face, no other features, simple and clean` },
+  { file: 'nose_5_upturned',prompt: `An upturned nose with tip pointing up in isolation, cartoon style, ${STYLE}, just the nose alone floating, no face, no other features, simple and clean` },
 
-  // Eyebrows
-  { file: 'brows_1_thin', prompt: `character face with thin eyebrows, ${BASE_STYLE}` },
-  { file: 'brows_2_thick', prompt: `character face with thick bold eyebrows, ${BASE_STYLE}` },
-  { file: 'brows_3_arched', prompt: `character face with high arched eyebrows, ${BASE_STYLE}` },
-  { file: 'brows_4_straight', prompt: `character face with straight flat eyebrows, ${BASE_STYLE}` },
+  // ── Eyebrow shapes (just the pair of eyebrows, NO face) ──
+  { file: 'brows_1_thin',    prompt: `A pair of thin delicate eyebrows floating in isolation, narrow arched brow hair, ${STYLE}, just the two eyebrows alone, no face, no eyes, no other features` },
+  { file: 'brows_2_thick',   prompt: `A pair of thick bold eyebrows floating in isolation, bushy wide brow hair, ${STYLE}, just the two eyebrows alone, no face, no eyes, no other features` },
+  { file: 'brows_3_arched',  prompt: `A pair of high arched eyebrows floating in isolation, dramatically curved brow hair, ${STYLE}, just the two eyebrows alone, no face, no eyes, no other features` },
+  { file: 'brows_4_straight',prompt: `A pair of straight flat eyebrows floating in isolation, horizontal brow hair, ${STYLE}, just the two eyebrows alone, no face, no eyes, no other features` },
 
-  // Beards
-  { file: 'beard_1_stubble', prompt: `male character with stubble facial hair, ${BASE_STYLE}` },
-  { file: 'beard_2_short', prompt: `male character with short trimmed beard, ${BASE_STYLE}` },
-  { file: 'beard_3_full', prompt: `male character with full thick beard, ${BASE_STYLE}` },
-  { file: 'beard_4_goatee', prompt: `male character with goatee, ${BASE_STYLE}` },
-  { file: 'beard_5_mustache', prompt: `male character with mustache only, ${BASE_STYLE}` },
+  // ── Beard styles (just the facial hair, NO face) ──
+  { file: 'beard_1_stubble',  prompt: `Stubble facial hair pattern in isolation, short rough hair dots forming a jaw and chin shape, ${STYLE}, just the facial hair alone floating, no face, no skin, no other features` },
+  { file: 'beard_2_short',    prompt: `A short trimmed beard in isolation, neat and groomed facial hair, ${STYLE}, just the beard hair alone floating, no face, no skin, no other features` },
+  { file: 'beard_3_full',     prompt: `A full thick beard in isolation, long bushy facial hair, ${STYLE}, just the beard hair alone floating, no face, no skin, no other features` },
+  { file: 'beard_4_goatee',   prompt: `A goatee in isolation, small pointed chin beard, ${STYLE}, just the facial hair alone floating, no face, no skin, no other features` },
+  { file: 'beard_5_mustache', prompt: `A mustache in isolation, thick curved upper lip hair, ${STYLE}, just the mustache hair alone floating, no face, no skin, no other features` },
 ];
 
 async function downloadImage(url, filepath) {
@@ -96,7 +99,7 @@ async function generateOne(asset) {
 }
 
 async function run() {
-  console.log(`Generating ${ASSETS.length} face assets...\n`);
+  console.log(`Generating ${ASSETS.length} isolated face part assets...\n`);
   // Process in batches of 3 to avoid rate limits
   for (let i = 0; i < ASSETS.length; i += 3) {
     const batch = ASSETS.slice(i, i + 3);

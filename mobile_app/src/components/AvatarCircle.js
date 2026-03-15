@@ -66,9 +66,10 @@ export default function AvatarCircle({ name, avatarClass, bodyStage, size = 'med
   };
 
   const sourceUri = !primaryUri || usingFallback ? fallbackUri : primaryUri;
-  const imageScale = 1.6;
+  // Tight crop: face-only
+  const imageScale = 2.3;
   const imageSize = dimension * imageScale;
-  const faceOffsetY = -(dimension * 0.35);
+  const faceOffsetY = -(dimension * 0.75);
 
   return (
     <Animated.View

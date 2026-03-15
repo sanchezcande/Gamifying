@@ -2,7 +2,7 @@
 // Each shows a complete cartoon face highlighting one specific feature
 
 export const HAIR_PREVIEWS = {
-  1: require('./hair_1_buzzcur.png'),
+  1: require('./hair_1_buzzcut.png'),
   2: require('./hair_2_fade.png'),
   3: require('./hair_3_long.png'),
   4: require('./hair_4_curly.png'),
