@@ -130,4 +130,20 @@ function buildAvatarUrlForUser({ user, avatarClass, avatarBodyStage }) {
   });
 }
 
-module.exports = { generateAvatarImage, buildAvatarImageUrl, buildAvatarUrlForUser };
+async function generateAvatarUrlForUser({ user, avatarClass, avatarBodyStage }) {
+  if (!user?.avatarGender) return null;
+  if (!process.env.OPENAI_API_KEY) return null;
+  try {
+    return await generateAvatarImage({
+      gender: user.avatarGender,
+      avatarClass,
+      faceOptions: buildFaceOptionsFromUser(user),
+      bodyStage: avatarBodyStage
+    });
+  } catch (err) {
+    console.error('Avatar generation failed, keeping fallback:', err.message);
+    return null;
+  }
+}
+
+module.exports = { generateAvatarImage, buildAvatarImageUrl, buildAvatarUrlForUser, generateAvatarUrlForUser };

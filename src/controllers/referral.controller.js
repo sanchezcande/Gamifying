@@ -1,7 +1,7 @@
 const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
 const { getAvatarProgress } = require('../services/avatarService');
-const { buildAvatarUrlForUser } = require('../services/avatarImageService');
+const { buildAvatarUrlForUser, generateAvatarUrlForUser } = require('../services/avatarImageService');
 
 async function createReferral(req, res) {
   try {
@@ -23,7 +23,7 @@ async function createReferral(req, res) {
     const xpEarned = 200;
     const gcEarned = 100;
 
-    await prisma.$transaction(async (tx) => {
+    const referralResult = await prisma.$transaction(async (tx) => {
       const updatedReferrer = {
         ...referrer,
         xp: referrer.xp + xpEarned,
@@ -89,7 +89,43 @@ async function createReferral(req, res) {
           gcEarned
         }
       });
+
+      return {
+        referrer,
+        referred,
+        referrerAvatar,
+        referredAvatar,
+        referrerShouldUpdate: !!referrerPhoto,
+        referredShouldUpdate: !!referredPhoto
+      };
     });
+
+    if (referralResult?.referrerShouldUpdate) {
+      const aiPhoto = await generateAvatarUrlForUser({
+        user: referralResult.referrer,
+        avatarClass: referralResult.referrerAvatar.avatarClass,
+        avatarBodyStage: referralResult.referrerAvatar.avatarBodyStage
+      });
+      if (aiPhoto) {
+        await prisma.user.update({
+          where: { id: referralResult.referrer.id },
+          data: { profilePhoto: aiPhoto }
+        });
+      }
+    }
+    if (referralResult?.referredShouldUpdate) {
+      const aiPhoto = await generateAvatarUrlForUser({
+        user: referralResult.referred,
+        avatarClass: referralResult.referredAvatar.avatarClass,
+        avatarBodyStage: referralResult.referredAvatar.avatarBodyStage
+      });
+      if (aiPhoto) {
+        await prisma.user.update({
+          where: { id: referralResult.referred.id },
+          data: { profilePhoto: aiPhoto }
+        });
+      }
+    }
 
     return ok(res, { xpEarned, gcEarned });
   } catch (error) {

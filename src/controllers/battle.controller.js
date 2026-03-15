@@ -2,7 +2,7 @@ const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
 const { calculateProbabilities, rollWinner } = require('../services/battleService');
 const { getAvatarProgress } = require('../services/avatarService');
-const { buildAvatarUrlForUser } = require('../services/avatarImageService');
+const { buildAvatarUrlForUser, generateAvatarUrlForUser } = require('../services/avatarImageService');
 
 async function challenge(req, res) {
   try {
@@ -19,7 +19,7 @@ async function challenge(req, res) {
     const { challengerProbability, defenderProbability } = calculateProbabilities(challenger, defender);
     const winnerId = rollWinner(challenger, defender, challengerProbability);
 
-    await prisma.$transaction(async (tx) => {
+    const battleResult = await prisma.$transaction(async (tx) => {
       await tx.battle.create({
         data: {
           challengerId: challenger.id,
@@ -62,7 +62,23 @@ async function challenge(req, res) {
           ...(nextProfilePhoto ? { profilePhoto: nextProfilePhoto } : {})
         }
       });
+
+      return { winner, avatar, shouldUpdateImage };
     });
+
+    if (battleResult?.shouldUpdateImage) {
+      const aiPhoto = await generateAvatarUrlForUser({
+        user: battleResult.winner,
+        avatarClass: battleResult.avatar.avatarClass,
+        avatarBodyStage: battleResult.avatar.avatarBodyStage
+      });
+      if (aiPhoto) {
+        await prisma.user.update({
+          where: { id: battleResult.winner.id },
+          data: { profilePhoto: aiPhoto }
+        });
+      }
+    }
 
     return ok(res, {
       challengerProbability,

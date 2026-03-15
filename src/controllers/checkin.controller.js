@@ -2,7 +2,7 @@ const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
 const { calculateCheckinStreak, getBaseCheckinRewards, startOfDay } = require('../services/statService');
 const { getAvatarProgress } = require('../services/avatarService');
-const { buildAvatarUrlForUser } = require('../services/avatarImageService');
+const { buildAvatarUrlForUser, generateAvatarUrlForUser } = require('../services/avatarImageService');
 const {
   getActiveSupplements,
   applyCheckinEffects
@@ -74,8 +74,22 @@ async function processCheckin(userId, method = 'QR') {
       }
     });
 
-    return { gains, avatar, activeSupplements };
+    return { gains, avatar, activeSupplements, shouldUpdateImage, user };
   });
+
+  if (result.shouldUpdateImage) {
+    const aiPhoto = await generateAvatarUrlForUser({
+      user: result.user,
+      avatarClass: result.avatar.avatarClass,
+      avatarBodyStage: result.avatar.avatarBodyStage
+    });
+    if (aiPhoto) {
+      await prisma.user.update({
+        where: { id: result.user.id },
+        data: { profilePhoto: aiPhoto }
+      });
+    }
+  }
 
   return {
     ...result.gains,
