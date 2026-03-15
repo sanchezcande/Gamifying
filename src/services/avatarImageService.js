@@ -74,6 +74,21 @@ function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}
   return `professional character portrait, ${genderLabel} athlete. ${build}. ${stageTag || ''} ${face}. Confident pose, fists clenched. ${STYLE_LOCK.join(', ')}.`;
 }
 
+function buildFaceOptionsFromUser(user = {}) {
+  return {
+    faceJawId: user.faceJawId,
+    faceCheeksId: user.faceCheeksId,
+    faceEyeShapeId: user.faceEyeShapeId,
+    faceEyeColorId: user.faceEyeColorId,
+    faceNoseId: user.faceNoseId,
+    faceHairStyleId: user.faceHairStyleId,
+    faceHairColorId: user.faceHairColorId,
+    faceSkinToneId: user.faceSkinToneId,
+    faceBeardId: user.faceBeardId,
+    faceEyebrowId: user.faceEyebrowId
+  };
+}
+
 async function generateAvatarImage({ gender, avatarClass, faceOptions, bodyStage }) {
   const prompt = buildPrompt({ gender, avatarClass, faceOptions, bodyStage });
 
@@ -103,4 +118,16 @@ function buildAvatarImageUrl({ name, avatarClass = 'ROOKIE', gender = 'MALE', fa
   return `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&nologo=true&seed=${seed}&model=flux`;
 }
 
-module.exports = { generateAvatarImage, buildAvatarImageUrl };
+function buildAvatarUrlForUser({ user, avatarClass, avatarBodyStage }) {
+  if (!user?.avatarGender) return null;
+  return buildAvatarImageUrl({
+    name: user.name,
+    avatarClass,
+    gender: user.avatarGender,
+    faceOptions: buildFaceOptionsFromUser(user),
+    imageVariant: 0,
+    bodyStage: avatarBodyStage
+  });
+}
+
+module.exports = { generateAvatarImage, buildAvatarImageUrl, buildAvatarUrlForUser };

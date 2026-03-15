@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { getCompetitionScore, getAvatarProgress } = require('../services/avatarService');
+const { buildAvatarUrlForUser } = require('../services/avatarImageService');
 
 async function closeAndRewardCompetition(tx, competition) {
   const members = await tx.user.findMany({ where: { gymId: competition.gymId } });
@@ -23,6 +24,16 @@ async function closeAndRewardCompetition(tx, competition) {
       currentMonthXp: reward.user.currentMonthXp + reward.xp
     };
     const avatar = getAvatarProgress(next);
+    const shouldUpdateImage =
+      reward.user.avatarGender &&
+      (avatar.avatarClass !== reward.user.avatarClass || avatar.avatarBodyStage !== reward.user.avatarBodyStage);
+    const nextProfilePhoto = shouldUpdateImage
+      ? buildAvatarUrlForUser({
+        user: reward.user,
+        avatarClass: avatar.avatarClass,
+        avatarBodyStage: avatar.avatarBodyStage
+      })
+      : null;
 
     await tx.user.update({
       where: { id: reward.user.id },
@@ -31,7 +42,8 @@ async function closeAndRewardCompetition(tx, competition) {
         gymCoins: next.gymCoins,
         currentMonthXp: next.currentMonthXp,
         avatarClass: avatar.avatarClass,
-        avatarBodyStage: avatar.avatarBodyStage
+        avatarBodyStage: avatar.avatarBodyStage,
+        ...(nextProfilePhoto ? { profilePhoto: nextProfilePhoto } : {})
       }
     });
   }

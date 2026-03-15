@@ -1,6 +1,7 @@
 const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
 const { getAvatarProgress } = require('../services/avatarService');
+const { buildAvatarUrlForUser } = require('../services/avatarImageService');
 
 async function createReferral(req, res) {
   try {
@@ -38,6 +39,22 @@ async function createReferral(req, res) {
 
       const referrerAvatar = getAvatarProgress(updatedReferrer);
       const referredAvatar = getAvatarProgress(updatedReferred);
+      const referrerPhoto = (referrer.avatarGender &&
+        (referrerAvatar.avatarClass !== referrer.avatarClass || referrerAvatar.avatarBodyStage !== referrer.avatarBodyStage))
+        ? buildAvatarUrlForUser({
+          user: referrer,
+          avatarClass: referrerAvatar.avatarClass,
+          avatarBodyStage: referrerAvatar.avatarBodyStage
+        })
+        : null;
+      const referredPhoto = (referred.avatarGender &&
+        (referredAvatar.avatarClass !== referred.avatarClass || referredAvatar.avatarBodyStage !== referred.avatarBodyStage))
+        ? buildAvatarUrlForUser({
+          user: referred,
+          avatarClass: referredAvatar.avatarClass,
+          avatarBodyStage: referredAvatar.avatarBodyStage
+        })
+        : null;
 
       await tx.user.update({
         where: { id: referrer.id },
@@ -46,7 +63,8 @@ async function createReferral(req, res) {
           gymCoins: updatedReferrer.gymCoins,
           currentMonthXp: updatedReferrer.currentMonthXp,
           avatarClass: referrerAvatar.avatarClass,
-          avatarBodyStage: referrerAvatar.avatarBodyStage
+          avatarBodyStage: referrerAvatar.avatarBodyStage,
+          ...(referrerPhoto ? { profilePhoto: referrerPhoto } : {})
         }
       });
 
@@ -58,7 +76,8 @@ async function createReferral(req, res) {
           currentMonthXp: updatedReferred.currentMonthXp,
           referredBy: referrer.id,
           avatarClass: referredAvatar.avatarClass,
-          avatarBodyStage: referredAvatar.avatarBodyStage
+          avatarBodyStage: referredAvatar.avatarBodyStage,
+          ...(referredPhoto ? { profilePhoto: referredPhoto } : {})
         }
       });
 

@@ -2,6 +2,7 @@ const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
 const { calculateProbabilities, rollWinner } = require('../services/battleService');
 const { getAvatarProgress } = require('../services/avatarService');
+const { buildAvatarUrlForUser } = require('../services/avatarImageService');
 
 async function challenge(req, res) {
   try {
@@ -39,6 +40,16 @@ async function challenge(req, res) {
         currentMonthXp: winner.currentMonthXp + rewards.xpReward
       };
       const avatar = getAvatarProgress(next);
+      const shouldUpdateImage =
+        winner.avatarGender &&
+        (avatar.avatarClass !== winner.avatarClass || avatar.avatarBodyStage !== winner.avatarBodyStage);
+      const nextProfilePhoto = shouldUpdateImage
+        ? buildAvatarUrlForUser({
+          user: winner,
+          avatarClass: avatar.avatarClass,
+          avatarBodyStage: avatar.avatarBodyStage
+        })
+        : null;
 
       await tx.user.update({
         where: { id: winner.id },
@@ -47,7 +58,8 @@ async function challenge(req, res) {
           gymCoins: next.gymCoins,
           currentMonthXp: next.currentMonthXp,
           avatarClass: avatar.avatarClass,
-          avatarBodyStage: avatar.avatarBodyStage
+          avatarBodyStage: avatar.avatarBodyStage,
+          ...(nextProfilePhoto ? { profilePhoto: nextProfilePhoto } : {})
         }
       });
     });

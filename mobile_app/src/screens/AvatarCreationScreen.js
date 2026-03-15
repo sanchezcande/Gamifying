@@ -1,70 +1,26 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
-import AvatarCircle from '../components/AvatarCircle';
 import { colors, radius } from '../theme/theme';
 
-const defaultFace = {
-  faceJawId: 1,
-  faceCheeksId: 1,
-  faceEyeShapeId: 1,
-  faceEyeColorId: 1,
-  faceNoseId: 1,
-  faceHairStyleId: 1,
-  faceHairColorId: 1,
-  faceSkinToneId: 1,
-  faceBeardId: 0,
-  faceEyebrowId: 1
+// Pre-built sprite images per body stage
+const SPRITES = {
+  1: require('../assets/avatars/avatar_1_rookie.png'),
+  2: require('../assets/avatars/avatar_2_beginner.png'),
+  3: require('../assets/avatars/avatar_3_intermediate.png'),
+  4: require('../assets/avatars/avatar_4_advanced.png'),
+  5: require('../assets/avatars/avatar_5_beast.png'),
 };
 
-const ORIGINS = [
-  {
-    title: 'Underground Circuit',
-    tag: 'Street-forged reflexes',
-    vibe: 'Fast, tactical, unpredictable'
-  },
-  {
-    title: 'Iron Foundry',
-    tag: 'Steel discipline',
-    vibe: 'Power, grit, endurance'
-  },
-  {
-    title: 'Apex Lab',
-    tag: 'Precision engineered',
-    vibe: 'Control, focus, intelligence'
-  }
-];
+const defaultFace = {
+  faceJawId: 1, faceCheeksId: 1, faceEyeShapeId: 1, faceEyeColorId: 1,
+  faceNoseId: 1, faceHairStyleId: 1, faceHairColorId: 1, faceSkinToneId: 1,
+  faceBeardId: 0, faceEyebrowId: 1
+};
 
-const BUILDS = [
-  {
-    title: 'Striker',
-    tag: 'Explosive speed',
-    size: 104,
-    aura: '⚡'
-  },
-  {
-    title: 'Brawler',
-    tag: 'Balanced force',
-    size: 124,
-    aura: '🔥'
-  },
-  {
-    title: 'Titan',
-    tag: 'Heavy power',
-    size: 148,
-    aura: '🛡️'
-  }
-];
-
-const STYLES = [
-  { title: 'Neo Noir', tag: 'High contrast, sleek edge' },
-  { title: 'Grit Classic', tag: 'Raw gym realism' },
-  { title: 'Arcade Myth', tag: 'Stylized legend' }
-];
-
-const STEP_LABELS = ['Identity', 'Build', 'Face', 'Style', 'Finalize'];
+const STEP_LABELS = ['Class', 'Appearance', 'Ready'];
 
 export default function AvatarCreationScreen({ navigation, route }) {
   const { user, createAvatar } = useAuth();
@@ -73,65 +29,30 @@ export default function AvatarCreationScreen({ navigation, route }) {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [gender, setGender] = useState(route.params?.initialGender || 'MALE');
-  const [face, setFace] = useState(route.params?.initialFace ? { ...defaultFace, ...route.params.initialFace } : defaultFace);
+  const [face, setFace] = useState(
+    route.params?.initialFace ? { ...defaultFace, ...route.params.initialFace } : defaultFace
+  );
   const [options, setOptions] = useState(null);
 
-  const [originIndex, setOriginIndex] = useState(0);
-  const [buildIndex, setBuildIndex] = useState(1);
-  const [styleIndex, setStyleIndex] = useState(0);
-  const [imageVariant, setImageVariant] = useState(0);
+  const bodyStage = user?.avatarBodyStage || 1;
 
   useEffect(() => {
-    apiService
-      .getFaceOptions()
+    apiService.getFaceOptions()
       .then((res) => setOptions(res.data))
       .catch(() => setOptions(null));
   }, []);
 
-  useEffect(() => {
-    const nextVariant = originIndex * 9 + buildIndex * 3 + styleIndex;
-    setImageVariant(nextVariant % 20);
-  }, [originIndex, buildIndex, styleIndex]);
-
-  const previewName = user?.name || 'Preview';
-  const build = BUILDS[buildIndex];
-  const origin = ORIGINS[originIndex];
-  const style = STYLES[styleIndex];
-  const progress = (step + 1) / STEP_LABELS.length;
-
-  const rerollFace = () => {
-    if (!options) return;
-    const pickRandom = (list) => list[Math.floor(Math.random() * list.length)]?.id || 1;
-    setFace((prev) => ({
-      ...prev,
-      faceSkinToneId: pickRandom(options.skinTone),
-      faceJawId: pickRandom(options.jaw),
-      faceCheeksId: pickRandom(options.cheeks),
-      faceEyeShapeId: pickRandom(options.eyeShape),
-      faceEyeColorId: pickRandom(options.eyeColor),
-      faceNoseId: pickRandom(options.nose),
-      faceEyebrowId: pickRandom(options.eyebrow),
-      faceHairStyleId: pickRandom(options.hairStyle),
-      faceHairColorId: pickRandom(options.hairColor),
-      faceBeardId: pickRandom(options.beard)
-    }));
-  };
-
-  const rerollLook = () => {
-    setImageVariant((prev) => (prev + 1) % 20);
-  };
-
   const save = async () => {
     try {
       setLoading(true);
-      await createAvatar({ gender, ...face, imageVariant });
+      await createAvatar({ gender, ...face });
       if (editing) {
         navigation.goBack();
       } else {
         navigation.replace('MainTabs');
       }
     } catch (e) {
-      Alert.alert('Avatar', e.message);
+      Alert.alert('Error', e.message);
     } finally {
       setLoading(false);
     }
@@ -139,161 +60,160 @@ export default function AvatarCreationScreen({ navigation, route }) {
 
   const pick = (key, value) => setFace((prev) => ({ ...prev, [key]: value }));
 
-  const stepTitle = useMemo(() => (editing ? `Respec · ${STEP_LABELS[step]}` : `Forge · ${STEP_LABELS[step]}`), [step, editing]);
+  const progress = (step + 1) / STEP_LABELS.length;
+
+  // Summary of selected face traits for the review step
+  const faceSummary = options ? [
+    { label: 'Skin', value: options.skinTone?.find(o => o.id === face.faceSkinToneId)?.label },
+    { label: 'Hair', value: options.hairStyle?.find(o => o.id === face.faceHairStyleId)?.label },
+    { label: 'Hair Color', value: options.hairColor?.find(o => o.id === face.faceHairColorId)?.label },
+    { label: 'Eyes', value: options.eyeShape?.find(o => o.id === face.faceEyeShapeId)?.label },
+    { label: 'Eye Color', value: options.eyeColor?.find(o => o.id === face.faceEyeColorId)?.label },
+    { label: 'Jaw', value: options.jaw?.find(o => o.id === face.faceJawId)?.label },
+    { label: 'Beard', value: options.beard?.find(o => o.id === face.faceBeardId)?.label },
+  ].filter(s => s.value) : [];
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#0a0a0a', '#200000', '#0a0a0a']} style={styles.header}>
-        <Text style={styles.title}>{stepTitle}</Text>
-        <Text style={styles.subtitle}>{editing ? 'Rebuild your legend' : 'Create your champion'}</Text>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
-        </View>
-        <View style={styles.pipsRow}>
+    <View style={s.container}>
+      {/* Header */}
+      <LinearGradient colors={['#0a0a0a', '#1a0000', '#0a0a0a']} style={s.header}>
+        <Text style={s.headerTitle}>
+          {editing ? 'EDIT FIGHTER' : 'CREATE YOUR FIGHTER'}
+        </Text>
+        <View style={s.progressRow}>
           {STEP_LABELS.map((label, idx) => (
-            <View key={label} style={[styles.pip, idx <= step && styles.pipActive]} />
+            <View key={label} style={s.stepItem}>
+              <View style={[s.stepDot, idx <= step && s.stepDotActive]}>
+                <Text style={[s.stepNum, idx <= step && s.stepNumActive]}>{idx + 1}</Text>
+              </View>
+              <Text style={[s.stepLabel, idx <= step && s.stepLabelActive]}>{label}</Text>
+            </View>
           ))}
         </View>
       </LinearGradient>
 
+      {/* ── STEP 0: Gender & Class ── */}
       {step === 0 && (
-        <ScrollView contentContainerStyle={styles.block}>
-          <Text style={styles.sectionTitle}>Choose your identity</Text>
-          <View style={styles.row}>
-            {['MALE', 'FEMALE'].map((g) => (
-              <Pressable key={g} onPress={() => setGender(g)} style={[styles.option, gender === g && styles.optionActive]}>
-                <Text style={styles.optionText}>{g}</Text>
+        <ScrollView contentContainerStyle={s.content}>
+          <Text style={s.sectionTitle}>SELECT YOUR FIGHTER</Text>
+
+          {/* Sprite preview */}
+          <View style={s.spriteBox}>
+            <Image source={SPRITES[bodyStage]} style={s.spriteImage} resizeMode="contain" />
+            <Text style={s.spriteLabel}>Stage {bodyStage} - {gender}</Text>
+          </View>
+
+          {/* Gender */}
+          <Text style={s.label}>GENDER</Text>
+          <View style={s.genderRow}>
+            {[
+              { key: 'MALE', icon: '♂', title: 'Male' },
+              { key: 'FEMALE', icon: '♀', title: 'Female' },
+            ].map(g => (
+              <Pressable
+                key={g.key}
+                onPress={() => setGender(g.key)}
+                style={[s.genderCard, gender === g.key && s.genderCardActive]}
+              >
+                <Text style={s.genderIcon}>{g.icon}</Text>
+                <Text style={[s.genderText, gender === g.key && s.genderTextActive]}>{g.title}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Origin path</Text>
-          {ORIGINS.map((item, idx) => (
-            <Pressable key={item.title} onPress={() => setOriginIndex(idx)} style={[styles.card, idx === originIndex && styles.cardActive]}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardTag}>{item.tag}</Text>
-              <Text style={styles.cardHint}>{item.vibe}</Text>
-            </Pressable>
-          ))}
-
-          <View style={styles.rowBetween}>
-            <View />
-            <Pressable style={styles.primaryBtn} onPress={() => setStep(1)}>
-              <Text style={styles.primaryText}>Continue</Text>
-            </Pressable>
-          </View>
+          <Pressable style={s.nextBtn} onPress={() => setStep(1)}>
+            <Text style={s.nextBtnText}>CUSTOMIZE APPEARANCE</Text>
+          </Pressable>
         </ScrollView>
       )}
 
+      {/* ── STEP 1: Face Customization ── */}
       {step === 1 && (
-        <ScrollView contentContainerStyle={styles.block}>
-          <Text style={styles.sectionTitle}>Build archetype</Text>
-          <View style={styles.previewBox}>
-            <AvatarCircle name={previewName} avatarClass={user?.avatarClass || 'ROOKIE'} size={build.size} />
-            <Text style={styles.previewHint}>This sets your visual presence. Stats grow through gameplay.</Text>
-          </View>
-          {BUILDS.map((item, idx) => (
-            <Pressable key={item.title} onPress={() => setBuildIndex(idx)} style={[styles.card, idx === buildIndex && styles.cardActive]}>
-              <View style={styles.cardRow}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardAura}>{item.aura}</Text>
-              </View>
-              <Text style={styles.cardTag}>{item.tag}</Text>
-            </Pressable>
-          ))}
+        <ScrollView contentContainerStyle={s.content}>
+          <Text style={s.sectionTitle}>CUSTOMIZE APPEARANCE</Text>
 
-          <View style={styles.rowBetween}>
-            <Pressable style={styles.secondaryBtn} onPress={() => setStep(0)}>
-              <Text style={styles.secondaryText}>Back</Text>
-            </Pressable>
-            <Pressable style={styles.primaryBtn} onPress={() => setStep(2)}>
-              <Text style={styles.primaryText}>Continue</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      )}
-
-      {step === 2 && (
-        <ScrollView contentContainerStyle={styles.block}>
-          <Text style={styles.sectionTitle}>Face sculptor</Text>
-          <View style={styles.previewBox}>
-            <AvatarCircle name={previewName} avatarClass={user?.avatarClass || 'ROOKIE'} size={build.size} />
-            <Text style={styles.previewHint}>Final render is generated when you save.</Text>
-            <Pressable style={styles.ghostBtn} onPress={rerollFace}>
-              <Text style={styles.ghostText}>Reroll face</Text>
-            </Pressable>
+          {/* Compact sprite + current selections */}
+          <View style={s.customizePreview}>
+            <Image source={SPRITES[bodyStage]} style={s.spriteSmall} resizeMode="contain" />
+            <View style={s.traitsPreview}>
+              {faceSummary.slice(0, 4).map(t => (
+                <View key={t.label} style={s.traitPill}>
+                  <Text style={s.traitLabel}>{t.label}:</Text>
+                  <Text style={s.traitValue}>{t.value}</Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           {options && (
             <>
-              <OptionRow title="Skin tone" items={options.skinTone} value={face.faceSkinToneId} onSelect={(id) => pick('faceSkinToneId', id)} />
-              <OptionRow title="Jaw" items={options.jaw} value={face.faceJawId} onSelect={(id) => pick('faceJawId', id)} />
-              <OptionRow title="Cheeks" items={options.cheeks} value={face.faceCheeksId} onSelect={(id) => pick('faceCheeksId', id)} />
-              <OptionRow title="Eye shape" items={options.eyeShape} value={face.faceEyeShapeId} onSelect={(id) => pick('faceEyeShapeId', id)} />
-              <OptionRow title="Eye color" items={options.eyeColor} value={face.faceEyeColorId} onSelect={(id) => pick('faceEyeColorId', id)} />
-              <OptionRow title="Nose" items={options.nose} value={face.faceNoseId} onSelect={(id) => pick('faceNoseId', id)} />
-              <OptionRow title="Eyebrows" items={options.eyebrow} value={face.faceEyebrowId} onSelect={(id) => pick('faceEyebrowId', id)} />
-              <OptionRow title="Hair style" items={options.hairStyle} value={face.faceHairStyleId} onSelect={(id) => pick('faceHairStyleId', id)} />
-              <OptionRow title="Hair color" items={options.hairColor} value={face.faceHairColorId} onSelect={(id) => pick('faceHairColorId', id)} />
-              <OptionRow title="Beard" items={options.beard} value={face.faceBeardId} onSelect={(id) => pick('faceBeardId', id)} />
+              <OptionRow label="SKIN TONE" items={options.skinTone} value={face.faceSkinToneId} onSelect={(id) => pick('faceSkinToneId', id)} />
+              <OptionRow label="HAIR STYLE" items={options.hairStyle} value={face.faceHairStyleId} onSelect={(id) => pick('faceHairStyleId', id)} />
+              <OptionRow label="HAIR COLOR" items={options.hairColor} value={face.faceHairColorId} onSelect={(id) => pick('faceHairColorId', id)} />
+              <OptionRow label="EYE SHAPE" items={options.eyeShape} value={face.faceEyeShapeId} onSelect={(id) => pick('faceEyeShapeId', id)} />
+              <OptionRow label="EYE COLOR" items={options.eyeColor} value={face.faceEyeColorId} onSelect={(id) => pick('faceEyeColorId', id)} />
+              <OptionRow label="JAW" items={options.jaw} value={face.faceJawId} onSelect={(id) => pick('faceJawId', id)} />
+              <OptionRow label="CHEEKS" items={options.cheeks} value={face.faceCheeksId} onSelect={(id) => pick('faceCheeksId', id)} />
+              <OptionRow label="NOSE" items={options.nose} value={face.faceNoseId} onSelect={(id) => pick('faceNoseId', id)} />
+              <OptionRow label="EYEBROWS" items={options.eyebrow} value={face.faceEyebrowId} onSelect={(id) => pick('faceEyebrowId', id)} />
+              <OptionRow label="BEARD" items={options.beard} value={face.faceBeardId} onSelect={(id) => pick('faceBeardId', id)} />
             </>
           )}
 
-          <View style={styles.rowBetween}>
-            <Pressable style={styles.secondaryBtn} onPress={() => setStep(1)}>
-              <Text style={styles.secondaryText}>Back</Text>
+          <View style={s.navRow}>
+            <Pressable style={s.backBtn} onPress={() => setStep(0)}>
+              <Text style={s.backBtnText}>BACK</Text>
             </Pressable>
-            <Pressable style={styles.primaryBtn} onPress={() => setStep(3)}>
-              <Text style={styles.primaryText}>Continue</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      )}
-
-      {step === 3 && (
-        <ScrollView contentContainerStyle={styles.block}>
-          <Text style={styles.sectionTitle}>Signature style</Text>
-          <View style={styles.previewBox}>
-            <AvatarCircle name={previewName} avatarClass={user?.avatarClass || 'ROOKIE'} size={build.size} />
-            <Text style={styles.previewHint}>Style changes the final art direction.</Text>
-            <Pressable style={styles.ghostBtn} onPress={rerollLook}>
-              <Text style={styles.ghostText}>Shuffle look</Text>
-            </Pressable>
-          </View>
-          {STYLES.map((item, idx) => (
-            <Pressable key={item.title} onPress={() => setStyleIndex(idx)} style={[styles.card, idx === styleIndex && styles.cardActive]}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardTag}>{item.tag}</Text>
-            </Pressable>
-          ))}
-
-          <View style={styles.rowBetween}>
-            <Pressable style={styles.secondaryBtn} onPress={() => setStep(2)}>
-              <Text style={styles.secondaryText}>Back</Text>
-            </Pressable>
-            <Pressable style={styles.primaryBtn} onPress={() => setStep(4)}>
-              <Text style={styles.primaryText}>Continue</Text>
+            <Pressable style={[s.nextBtn, { flex: 1 }]} onPress={() => setStep(2)}>
+              <Text style={s.nextBtnText}>REVIEW</Text>
             </Pressable>
           </View>
         </ScrollView>
       )}
 
-      {step === 4 && (
-        <ScrollView contentContainerStyle={styles.block}>
-          <Text style={styles.sectionTitle}>Finalize</Text>
-          <View style={styles.finalCard}>
-            <AvatarCircle name={previewName} avatarClass={user?.avatarClass || 'ROOKIE'} size={build.size + 16} />
-            <Text style={styles.finalTitle}>{previewName}</Text>
-            <Text style={styles.finalMeta}>{origin.title} · {build.title} · {style.title}</Text>
-            <Text style={styles.finalHint}>You can respec anytime in Edit Avatar.</Text>
+      {/* ── STEP 2: Confirm ── */}
+      {step === 2 && (
+        <ScrollView contentContainerStyle={s.content}>
+          <Text style={s.sectionTitle}>YOUR FIGHTER</Text>
+
+          <View style={s.finalCard}>
+            <Image source={SPRITES[bodyStage]} style={s.spriteFinal} resizeMode="contain" />
+            <Text style={s.finalName}>{user?.name || 'Fighter'}</Text>
+            <Text style={s.finalGender}>{gender} FIGHTER</Text>
+
+            <View style={s.finalTraits}>
+              {faceSummary.map(t => (
+                <View key={t.label} style={s.finalTraitRow}>
+                  <Text style={s.finalTraitLabel}>{t.label}</Text>
+                  <Text style={s.finalTraitValue}>{t.value}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={s.finalHint}>
+              Your unique AI portrait will be generated when you confirm.
+            </Text>
           </View>
 
-          <View style={styles.rowBetween}>
-            <Pressable style={styles.secondaryBtn} onPress={() => setStep(3)}>
-              <Text style={styles.secondaryText}>Back</Text>
+          <View style={s.navRow}>
+            <Pressable style={s.backBtn} onPress={() => setStep(1)}>
+              <Text style={s.backBtnText}>BACK</Text>
             </Pressable>
-            <Pressable style={[styles.primaryBtn, loading && { opacity: 0.7 }]} onPress={save} disabled={loading}>
-              <Text style={styles.primaryText}>{loading ? 'Saving...' : editing ? 'Save Changes' : 'Enter the arena'}</Text>
+            <Pressable
+              style={[s.confirmBtn, loading && { opacity: 0.6 }]}
+              onPress={save}
+              disabled={loading}
+            >
+              <LinearGradient
+                colors={['#E00', '#900']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.confirmGrad}
+              >
+                <Text style={s.confirmText}>
+                  {loading ? 'GENERATING...' : editing ? 'SAVE CHANGES' : 'ENTER THE GYM'}
+                </Text>
+              </LinearGradient>
             </Pressable>
           </View>
         </ScrollView>
@@ -302,14 +222,20 @@ export default function AvatarCreationScreen({ navigation, route }) {
   );
 }
 
-function OptionRow({ title, items = [], value, onSelect }) {
+function OptionRow({ label, items = [], value, onSelect }) {
   return (
-    <View style={styles.optionRow}>
-      <Text style={styles.optionLabel}>{title}</Text>
+    <View style={s.optionRow}>
+      <Text style={s.optionLabel}>{label}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {items.map((item) => (
-          <Pressable key={`${title}-${item.id}`} style={[styles.chip, value === item.id && styles.optionActive]} onPress={() => onSelect(item.id)}>
-            <Text style={styles.chipText}>{item.label}</Text>
+          <Pressable
+            key={`${label}-${item.id}`}
+            style={[s.chip, value === item.id && s.chipActive]}
+            onPress={() => onSelect(item.id)}
+          >
+            <Text style={[s.chipText, value === item.id && s.chipTextActive]}>
+              {item.label}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -317,84 +243,73 @@ function OptionRow({ title, items = [], value, onSelect }) {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingTop: 24, paddingBottom: 16, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#1f1f1f' },
-  title: { color: '#fff', fontSize: 26, fontWeight: '800' },
-  subtitle: { color: colors.textSecondary, marginTop: 4 },
-  progressTrack: { height: 6, backgroundColor: '#1a1a1a', borderRadius: 999, marginTop: 12, overflow: 'hidden' },
-  progressFill: { height: 6, backgroundColor: colors.primary },
-  pipsRow: { flexDirection: 'row', gap: 6, marginTop: 10 },
-  pip: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#1f1f1f' },
-  pipActive: { backgroundColor: colors.primary },
-  block: { padding: 20, paddingBottom: 40 },
-  sectionTitle: { color: colors.primary, fontWeight: '800', fontSize: 12, textTransform: 'uppercase', marginBottom: 12 },
-  row: { flexDirection: 'row', gap: 10 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
-  option: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16
-  },
-  optionActive: { borderColor: colors.primary, backgroundColor: '#2b1111' },
-  optionText: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
-  card: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    backgroundColor: colors.surface,
-    padding: 14,
-    marginBottom: 10
-  },
-  cardActive: { borderColor: colors.primary, backgroundColor: '#220909' },
-  cardTitle: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  cardTag: { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
-  cardHint: { color: '#a3a3a3', fontSize: 11, marginTop: 6 },
-  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardAura: { fontSize: 18 },
-  previewBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    marginBottom: 12,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: '#0f0f0f'
-  },
-  previewHint: { color: colors.textSecondary, fontSize: 11, marginTop: 8 },
-  ghostBtn: { marginTop: 8, borderWidth: 1, borderColor: '#333', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  ghostText: { color: '#cbd5f5', fontSize: 11, fontWeight: '700' },
-  primaryBtn: { backgroundColor: colors.primary, borderRadius: radius.button, paddingVertical: 12, paddingHorizontal: 18 },
-  primaryText: { color: '#fff', fontWeight: '800' },
-  secondaryBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.button, paddingVertical: 12, paddingHorizontal: 18, backgroundColor: colors.surface },
-  secondaryText: { color: '#fff', fontWeight: '700' },
-  optionRow: { marginBottom: 10 },
-  optionLabel: { color: colors.primary, marginBottom: 8, fontWeight: '700', textTransform: 'uppercase', fontSize: 12 },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    marginRight: 8
-  },
-  chipText: { color: '#fff', fontSize: 12 },
-  finalCard: {
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    backgroundColor: '#111',
-    padding: 20
-  },
-  finalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginTop: 10 },
-  finalMeta: { color: colors.textSecondary, fontSize: 12, marginTop: 4 },
-  finalHint: { color: '#a3a3a3', fontSize: 11, marginTop: 10 }
+
+  // Header
+  header: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#1f1f1f' },
+  headerTitle: { color: colors.primary, fontSize: 18, fontWeight: '900', letterSpacing: 2, textAlign: 'center' },
+  progressRow: { flexDirection: 'row', justifyContent: 'center', gap: 24, marginTop: 16 },
+  stepItem: { alignItems: 'center', gap: 4 },
+  stepDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#1a1a1a', borderWidth: 2, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
+  stepDotActive: { backgroundColor: colors.primary + '22', borderColor: colors.primary },
+  stepNum: { color: '#555', fontWeight: '800', fontSize: 12 },
+  stepNumActive: { color: colors.primary },
+  stepLabel: { color: '#444', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  stepLabelActive: { color: '#aaa' },
+
+  // Content
+  content: { padding: 20, paddingBottom: 40 },
+  sectionTitle: { color: colors.primary, fontWeight: '900', fontSize: 13, letterSpacing: 1.5, marginBottom: 16 },
+  label: { color: '#666', fontWeight: '800', fontSize: 11, letterSpacing: 1, marginBottom: 8, marginTop: 16 },
+
+  // Step 0: Sprite
+  spriteBox: { alignItems: 'center', backgroundColor: '#0d0d0d', borderRadius: radius.card, borderWidth: 1, borderColor: '#1e1e1e', paddingVertical: 20, marginBottom: 8 },
+  spriteImage: { width: 160, height: 220 },
+  spriteLabel: { color: '#555', fontSize: 11, fontWeight: '700', marginTop: 8, textTransform: 'uppercase', letterSpacing: 1 },
+
+  // Gender
+  genderRow: { flexDirection: 'row', gap: 12 },
+  genderCard: { flex: 1, backgroundColor: '#111', borderWidth: 1.5, borderColor: '#222', borderRadius: radius.card, paddingVertical: 20, alignItems: 'center', gap: 6 },
+  genderCardActive: { borderColor: colors.primary, backgroundColor: '#1a0505' },
+  genderIcon: { fontSize: 28 },
+  genderText: { color: '#666', fontWeight: '800', fontSize: 13 },
+  genderTextActive: { color: '#fff' },
+
+  // Step 1: Customize preview
+  customizePreview: { flexDirection: 'row', backgroundColor: '#0d0d0d', borderRadius: radius.card, borderWidth: 1, borderColor: '#1e1e1e', padding: 12, marginBottom: 16, gap: 12, alignItems: 'center' },
+  spriteSmall: { width: 60, height: 80 },
+  traitsPreview: { flex: 1, gap: 4 },
+  traitPill: { flexDirection: 'row', gap: 4 },
+  traitLabel: { color: '#555', fontSize: 11, fontWeight: '700' },
+  traitValue: { color: '#ccc', fontSize: 11, fontWeight: '700' },
+
+  // Option rows
+  optionRow: { marginBottom: 14 },
+  optionLabel: { color: '#555', marginBottom: 6, fontWeight: '800', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
+  chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1.5, borderColor: '#222', backgroundColor: '#111', marginRight: 8 },
+  chipActive: { borderColor: colors.primary, backgroundColor: '#1a0505' },
+  chipText: { color: '#888', fontSize: 13, fontWeight: '700' },
+  chipTextActive: { color: '#fff' },
+
+  // Navigation
+  navRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  backBtn: { borderWidth: 1, borderColor: '#333', borderRadius: radius.button, paddingVertical: 14, paddingHorizontal: 20, backgroundColor: '#111' },
+  backBtnText: { color: '#888', fontWeight: '800', fontSize: 13 },
+  nextBtn: { backgroundColor: colors.primary, borderRadius: radius.button, paddingVertical: 14, paddingHorizontal: 20, alignItems: 'center' },
+  nextBtnText: { color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 0.5 },
+
+  // Step 2: Final
+  finalCard: { alignItems: 'center', backgroundColor: '#0d0d0d', borderRadius: radius.card, borderWidth: 1, borderColor: '#1e1e1e', padding: 24 },
+  spriteFinal: { width: 140, height: 200 },
+  finalName: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 12 },
+  finalGender: { color: '#555', fontSize: 12, fontWeight: '700', letterSpacing: 1, marginTop: 4 },
+  finalTraits: { width: '100%', marginTop: 16, gap: 6 },
+  finalTraitRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  finalTraitLabel: { color: '#555', fontSize: 12, fontWeight: '700' },
+  finalTraitValue: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  finalHint: { color: '#444', fontSize: 11, textAlign: 'center', marginTop: 16 },
+  confirmBtn: { flex: 1, borderRadius: radius.button, overflow: 'hidden' },
+  confirmGrad: { paddingVertical: 16, alignItems: 'center' },
+  confirmText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 1 },
 });

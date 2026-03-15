@@ -1,6 +1,7 @@
 const prisma = require('../utils/prisma');
 const { applyInactivityDecay, startOfDay } = require('../services/statService');
 const { getAvatarProgress } = require('../services/avatarService');
+const { buildAvatarUrlForUser } = require('../services/avatarImageService');
 
 async function runDailyDecay() {
   const users = await prisma.user.findMany();
@@ -48,13 +49,24 @@ async function runDailyDecay() {
       statEndurance: decayed.statEndurance,
       statPower: decayed.statPower
     });
+    const shouldUpdateImage =
+      user.avatarGender &&
+      (avatar.avatarClass !== user.avatarClass || avatar.avatarBodyStage !== user.avatarBodyStage);
+    const nextProfilePhoto = shouldUpdateImage
+      ? buildAvatarUrlForUser({
+        user,
+        avatarClass: avatar.avatarClass,
+        avatarBodyStage: avatar.avatarBodyStage
+      })
+      : null;
 
     await prisma.user.update({
       where: { id: user.id },
       data: {
         ...decayed,
         avatarClass: avatar.avatarClass,
-        avatarBodyStage: avatar.avatarBodyStage
+        avatarBodyStage: avatar.avatarBodyStage,
+        ...(nextProfilePhoto ? { profilePhoto: nextProfilePhoto } : {})
       }
     });
   }

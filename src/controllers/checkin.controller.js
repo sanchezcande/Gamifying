@@ -2,6 +2,7 @@ const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
 const { calculateCheckinStreak, getBaseCheckinRewards, startOfDay } = require('../services/statService');
 const { getAvatarProgress } = require('../services/avatarService');
+const { buildAvatarUrlForUser } = require('../services/avatarImageService');
 const {
   getActiveSupplements,
   applyCheckinEffects
@@ -43,13 +44,24 @@ async function processCheckin(userId, method = 'QR') {
     };
 
     const avatar = getAvatarProgress(nextUserState);
+    const shouldUpdateImage =
+      user.avatarGender &&
+      (avatar.avatarClass !== user.avatarClass || avatar.avatarBodyStage !== user.avatarBodyStage);
+    const nextProfilePhoto = shouldUpdateImage
+      ? buildAvatarUrlForUser({
+        user,
+        avatarClass: avatar.avatarClass,
+        avatarBodyStage: avatar.avatarBodyStage
+      })
+      : null;
 
     await tx.user.update({
       where: { id: user.id },
       data: {
         ...nextUserState,
         avatarClass: avatar.avatarClass,
-        avatarBodyStage: avatar.avatarBodyStage
+        avatarBodyStage: avatar.avatarBodyStage,
+        ...(nextProfilePhoto ? { profilePhoto: nextProfilePhoto } : {})
       }
     });
 
