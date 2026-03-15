@@ -58,18 +58,16 @@ function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}
     LOOKUPS.eyebrow[faceOptions.faceEyebrowId] ? `${LOOKUPS.eyebrow[faceOptions.faceEyebrowId]} eyebrows` : null,
   ].filter(Boolean).join(', ');
 
-  const outfit = gender === 'FEMALE'
-    ? 'wearing a red sports bra and black athletic shorts, white sneakers'
-    : 'wearing a red tank top and black athletic shorts, white sneakers';
+  const outfit = 'wearing a red athletic tank top, black shorts, white sneakers';
 
   return [
-    `3D cartoon stylized full-body ${genderLabel} gym character`,
+    `3D cartoon stylized full-body ${genderLabel} fitness character`,
     'Pixar-inspired mobile game art style',
     'chibi proportions with oversized head and expressive face',
     build,
     face,
     outfit,
-    'standing confident pose with fists clenched',
+    'standing in a confident pose',
     'clean solid white background',
     'smooth 3D render, vibrant colors, soft shadows',
     'single character only, no duplicates, no text, no watermark',
