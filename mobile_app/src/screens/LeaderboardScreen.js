@@ -45,7 +45,7 @@ function ChampionshipZone({ first, second }) {
       <View style={cz.fighters}>
         {/* #1 */}
         <View style={cz.side}>
-          <AvatarCircle name={first.name} avatarClass={first.avatarClass} size="medium" />
+          <AvatarCircle name={first.name} avatarClass={first.avatarClass} bodyStage={first.avatarBodyStage} size="medium" />
           <Text style={cz.medal}>🥇</Text>
           <Text style={cz.fighterName} numberOfLines={1}>{first.name}</Text>
           <Text style={[cz.pwr, { color: '#D4AF37' }]}>
@@ -63,7 +63,7 @@ function ChampionshipZone({ first, second }) {
 
         {/* #2 */}
         <View style={cz.side}>
-          <AvatarCircle name={second?.name} avatarClass={second?.avatarClass} size="medium" />
+          <AvatarCircle name={second?.name} avatarClass={second?.avatarClass} bodyStage={second?.avatarBodyStage} size="medium" />
           <Text style={cz.medal}>🥈</Text>
           <Text style={cz.fighterName} numberOfLines={1}>{second?.name ?? '—'}</Text>
           <Text style={[cz.pwr, { color: '#A8A9AD' }]}>
@@ -125,7 +125,7 @@ function EntryRow({ entry, idx, isCurrent }) {
       </View>
 
       {/* Avatar */}
-      <AvatarCircle name={entry.name} avatarClass={entry.avatarClass} size="small" />
+      <AvatarCircle name={entry.name} avatarClass={entry.avatarClass} bodyStage={entry.avatarBodyStage} size="small" />
 
       {/* Info */}
       <View style={row.info}>

@@ -1,6 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
 
+const STAGE_TO_SPRITE = {
+  1: require('../assets/avatars/avatar_1_rookie.png'),
+  2: require('../assets/avatars/avatar_2_beginner.png'),
+  3: require('../assets/avatars/avatar_3_intermediate.png'),
+  4: require('../assets/avatars/avatar_4_advanced.png'),
+  5: require('../assets/avatars/avatar_5_beast.png'),
+};
+
 const CLASS_TO_SPRITE = {
   ROOKIE:   require('../assets/avatars/avatar_1_rookie.png'),
   FIGHTER:  require('../assets/avatars/avatar_3_intermediate.png'),
@@ -24,13 +32,15 @@ export const CLASS_AURA = {
 
 export default function AvatarSprite({
   avatarClass = 'ROOKIE',
+  bodyStage,
   size = 120,
   flip = false,
   idle = true,
   glowColor,
   style,
 }) {
-  const sprite = CLASS_TO_SPRITE[avatarClass] || CLASS_TO_SPRITE.ROOKIE;
+  const stageSprite = bodyStage ? STAGE_TO_SPRITE[Number(bodyStage)] : null;
+  const sprite = stageSprite || CLASS_TO_SPRITE[avatarClass] || CLASS_TO_SPRITE.ROOKIE;
   const glow   = glowColor || CLASS_GLOW[avatarClass] || '#888';
 
   const floatY      = useRef(new Animated.Value(0)).current;

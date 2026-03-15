@@ -89,18 +89,22 @@ async function createAvatar(req, res) {
       faceBeardId, faceEyebrowId
     };
 
+    const avatarClass = getAvatarClass(req.user.xp);
+    const avatarBodyStage = getBodyStage(req.user.statMuscle + req.user.statEndurance + req.user.statPower);
+
     // Generate avatar image with DALL-E, fall back to Pollinations URL on error
     let profilePhoto;
     try {
-      profilePhoto = await generateAvatarImage({ gender, avatarClass: getAvatarClass(req.user.xp), faceOptions });
+      profilePhoto = await generateAvatarImage({ gender, avatarClass, faceOptions, bodyStage: avatarBodyStage });
     } catch (imgErr) {
       console.error('DALL-E generation failed, using fallback:', imgErr.message);
       profilePhoto = buildAvatarImageUrl({
         name: req.user.name,
-        avatarClass: getAvatarClass(req.user.xp),
+        avatarClass,
         gender,
         faceOptions,
-        imageVariant
+        imageVariant,
+        bodyStage: avatarBodyStage
       });
     }
 
@@ -112,8 +116,8 @@ async function createAvatar(req, res) {
         faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
         faceBeardId, faceEyebrowId,
         profilePhoto,
-        avatarClass: getAvatarClass(req.user.xp),
-        avatarBodyStage: getBodyStage(req.user.statMuscle + req.user.statEndurance + req.user.statPower)
+        avatarClass,
+        avatarBodyStage
       }
     });
     const { password: _password, ...safeUser } = user;

@@ -23,16 +23,39 @@ const LOOKUPS = {
   eyebrow:   buildLookup(FACE_OPTIONS.eyebrow),
 };
 
-const CLASS_STYLE = {
-  WARRIOR:  'red fire aura, powerful and intimidating',
-  CHAMPION: 'blue electric aura, confident and strong',
-  FIGHTER:  'green energy glow, determined and fierce',
-  ROOKIE:   'grey tones, motivated and eager',
+// Body build per class — progressively more muscular
+const CLASS_BUILD = {
+  ROOKIE:   'slim and lean build, beginner physique',
+  FIGHTER:  'athletic build, visible muscle tone',
+  CHAMPION: 'muscular build, well-defined abs and arms',
+  WARRIOR:  'extremely muscular and massive build, bodybuilder physique, huge arms and chest',
 };
 
-function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {} }) {
+// Five visual stages for consistent progression
+const STAGE_BUILD = {
+  1: 'lean starter build, light muscle definition',
+  2: 'beginner athletic build, noticeable tone',
+  3: 'intermediate build, solid muscle definition',
+  4: 'advanced build, thick muscle volume',
+  5: 'elite build, massive bodybuilder physique',
+};
+
+// Keep aesthetics consistent across renders
+const STYLE_LOCK = [
+  'consistent art style across renders',
+  'premium mobile game character art',
+  'gritty cinematic gym vibe',
+  'dark studio background with soft haze',
+  'high-contrast rim lighting',
+  'muted palette with warm highlights',
+  'sharp focus, ultra detailed',
+  'no text, no watermark, no logo'
+];
+
+function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}, bodyStage }) {
   const genderLabel = gender === 'FEMALE' ? 'female' : 'male';
-  const classStyle = CLASS_STYLE[avatarClass] || CLASS_STYLE.ROOKIE;
+  const stageKey = Number(bodyStage);
+  const build = STAGE_BUILD[stageKey] || CLASS_BUILD[avatarClass] || CLASS_BUILD.ROOKIE;
 
   const face = [
     LOOKUPS.skinTone[faceOptions.faceSkinToneId] ? `${LOOKUPS.skinTone[faceOptions.faceSkinToneId]} skin tone` : null,
@@ -47,11 +70,12 @@ function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}
     LOOKUPS.eyebrow[faceOptions.faceEyebrowId] ? `${LOOKUPS.eyebrow[faceOptions.faceEyebrowId]} eyebrows` : null,
   ].filter(Boolean).join(', ');
 
-  return `Cinematic fighting game character portrait of a ${genderLabel} gym athlete warrior. ${face}. ${classStyle}. Dramatic dark background, dramatic rim lighting, close-up face and shoulders, ultra detailed, no text, no watermark.`;
+  const stageTag = stageKey ? `body stage ${stageKey} of 5` : null;
+  return `professional character portrait, ${genderLabel} athlete. ${build}. ${stageTag || ''} ${face}. Confident pose, fists clenched. ${STYLE_LOCK.join(', ')}.`;
 }
 
-async function generateAvatarImage({ gender, avatarClass, faceOptions }) {
-  const prompt = buildPrompt({ gender, avatarClass, faceOptions });
+async function generateAvatarImage({ gender, avatarClass, faceOptions, bodyStage }) {
+  const prompt = buildPrompt({ gender, avatarClass, faceOptions, bodyStage });
 
   const response = await openai.images.generate({
     model: 'dall-e-3',
@@ -64,10 +88,19 @@ async function generateAvatarImage({ gender, avatarClass, faceOptions }) {
   return response.data[0].url;
 }
 
+function hashString(text = '') {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
 // Keep backward compat — returns a Pollinations URL as fallback
-function buildAvatarImageUrl({ name, avatarClass = 'ROOKIE', gender = 'MALE', faceOptions = {}, imageVariant = 0 }) {
-  const prompt = encodeURIComponent(buildPrompt({ gender, avatarClass, faceOptions }));
-  return `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&nologo=true&seed=${imageVariant}&model=flux`;
+function buildAvatarImageUrl({ name, avatarClass = 'ROOKIE', gender = 'MALE', faceOptions = {}, imageVariant = 0, bodyStage }) {
+  const prompt = encodeURIComponent(buildPrompt({ gender, avatarClass, faceOptions, bodyStage }));
+  const seed = hashString(`${name || 'avatar'}-${avatarClass}-${imageVariant}`) % 100000;
+  return `https://image.pollinations.ai/prompt/${prompt}?width=512&height=512&nologo=true&seed=${seed}&model=flux`;
 }
 
 module.exports = { generateAvatarImage, buildAvatarImageUrl };

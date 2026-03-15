@@ -88,6 +88,7 @@ function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
                 <AvatarCircle
                   name={me?.name}
                   avatarClass={me?.avatarClass}
+                  bodyStage={me?.avatarBodyStage}
                   size="large"
                   activeSupplements={me?.activeSupplements || []}
                   profilePhoto={me?.profilePhoto}
@@ -104,6 +105,7 @@ function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
                 <AvatarCircle
                   name={target.name}
                   avatarClass={target.avatarClass}
+                  bodyStage={target?.avatarBodyStage}
                   size="large"
                   profilePhoto={target.profilePhoto}
                 />
@@ -564,7 +566,7 @@ function BattleModal({ open, result, me, target, onClose }) {
               {/* Ambient floating particles */}
               {showAmbientMe && <AmbientParticles emoji={myEmoji} count={5} />}
 
-              <AvatarSprite avatarClass={me?.avatarClass} size={95} flip={false} glowColor={myGlow} idle={phase === 'enter'} />
+              <AvatarSprite avatarClass={me?.avatarClass} bodyStage={me?.avatarBodyStage} size={95} flip={false} glowColor={myGlow} idle={phase === 'enter'} />
               <Text style={[b.fighterName, { color: myGlow }]} numberOfLines={1}>{me?.name}</Text>
               {mySupps.length > 0 && <Text style={b.supps}>{mySupps.join(' ')}</Text>}
               {phase === 'victory' && won && <Text style={b.crownBadge}>👑</Text>}
@@ -612,7 +614,7 @@ function BattleModal({ open, result, me, target, onClose }) {
 
               {showAmbientThem && <AmbientParticles emoji={theirEmoji} count={5} />}
 
-              <AvatarSprite avatarClass={target?.avatarClass} size={95} flip={true} glowColor={theirGlow} idle={phase === 'enter'} />
+              <AvatarSprite avatarClass={target?.avatarClass} bodyStage={target?.avatarBodyStage} size={95} flip={true} glowColor={theirGlow} idle={phase === 'enter'} />
               <Text style={[b.fighterName, { color: theirGlow }]} numberOfLines={1}>{target?.name}</Text>
               {phase === 'victory' && !won && <Text style={b.crownBadge}>👑</Text>}
             </Animated.View>
@@ -750,6 +752,7 @@ export default function BattleScreen() {
               <AvatarCircle
                 name={item.name}
                 avatarClass={item.avatarClass}
+                bodyStage={item.avatarBodyStage}
                 size="small"
                 profilePhoto={item.profilePhoto}
               />

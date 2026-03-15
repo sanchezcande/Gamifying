@@ -138,7 +138,7 @@ export default function ProfileScreen({ navigation }) {
           {hasProfilePhoto ? (
             <Image source={{ uri: user.profilePhoto }} style={styles.profilePhoto} />
           ) : (
-            <AvatarCircle name={user?.name} avatarClass={user?.avatarClass} size="large" activeSupplements={user?.activeSupplements || []} profilePhoto={user?.profilePhoto} />
+            <AvatarCircle name={user?.name} avatarClass={user?.avatarClass} bodyStage={user?.avatarBodyStage} size="large" activeSupplements={user?.activeSupplements || []} profilePhoto={user?.profilePhoto} />
           )}
           <View style={styles.cameraBadge}>
             <Text style={styles.cameraBadgeText}>{photoUploading ? '...' : '📷'}</Text>

@@ -11,7 +11,8 @@ import AvatarCircle from '../components/AvatarCircle';
 import { colors, radius } from '../theme/theme';
 import { skinToneColor, timeLeftLabel } from '../utils/avatar';
 
-const widthByStage = { 1: 38, 2: 50, 3: 65, 4: 80, 5: 95 };
+const widthByStage = { 1: 46, 2: 62, 3: 84, 4: 106, 5: 128 };
+const circleByStage = { 1: 110, 2: 126, 3: 146, 4: 168, 5: 192 };
 
 export default function AvatarScreen({ navigation }) {
   const { user } = useAuth();
@@ -40,11 +41,12 @@ export default function AvatarScreen({ navigation }) {
         <AvatarCircle
           name={user?.name}
           avatarClass={avatar.class}
-          size="large"
+          bodyStage={avatar.bodyStage}
+          size={circleByStage[avatar.bodyStage] || 126}
           profilePhoto={avatar.profilePhoto || user?.profilePhoto}
           activeSupplements={avatar.activeSupplements}
         />
-        <View style={[styles.avatarShape, { backgroundColor: skinToneColor(avatar.faceOptions?.faceSkinToneId), width: widthByStage[avatar.bodyStage] || 50 }]} />
+        <View style={[styles.avatarShape, { backgroundColor: skinToneColor(avatar.faceOptions?.faceSkinToneId), width: widthByStage[avatar.bodyStage] || 62 }]} />
       </LinearGradient>
 
       <View style={styles.row}>
@@ -113,7 +115,7 @@ const styles = StyleSheet.create({
   top: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 8 },
   name: { color: '#fff', fontSize: 24, fontWeight: '800' },
   stage: { color: colors.textSecondary, fontWeight: '700' },
-  avatarShape: { height: 120, borderTopLeftRadius: 50, borderTopRightRadius: 50, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginTop: 8 },
+  avatarShape: { height: 140, borderTopLeftRadius: 60, borderTopRightRadius: 60, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, marginTop: 8 },
   row: { flexDirection: 'row', gap: 10, marginHorizontal: 14, marginTop: 14 },
   section: { marginTop: 16, marginHorizontal: 14 },
   sectionTitle: { color: colors.primary, fontWeight: '800', fontSize: 12, marginBottom: 8 },
