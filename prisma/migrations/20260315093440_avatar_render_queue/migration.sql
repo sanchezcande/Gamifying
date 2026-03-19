@@ -7,10 +7,6 @@ CREATE TYPE "AvatarRenderStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'DONE', 'FAI
 -- AlterTable
 ALTER TABLE "CheckIn" ADD COLUMN     "method" "CheckinMethod" NOT NULL DEFAULT 'QR';
 
--- AlterTable
-ALTER TABLE "Gym" ALTER COLUMN "apiKey" DROP DEFAULT,
-ALTER COLUMN "qrSecret" DROP DEFAULT;
-
 -- CreateTable
 CREATE TABLE "AvatarRenderJob" (
     "id" TEXT NOT NULL,

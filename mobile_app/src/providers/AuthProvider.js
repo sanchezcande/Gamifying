@@ -57,7 +57,6 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      setLoading(true);
       setError(null);
       const result = await apiService.login({ email, password });
       const { token: newToken, user: loggedUser } = result.data || {};
@@ -69,14 +68,11 @@ export function AuthProvider({ children }) {
     } catch (e) {
       setError(e.message);
       throw e;
-    } finally {
-      setLoading(false);
     }
   };
 
   const register = async ({ name, email, password, gymId }) => {
     try {
-      setLoading(true);
       setError(null);
       const result = await apiService.register({ name, email, password, gymId });
       const { token: newToken, user: regUser } = result.data || {};
@@ -87,8 +83,6 @@ export function AuthProvider({ children }) {
     } catch (e) {
       setError(e.message);
       throw e;
-    } finally {
-      setLoading(false);
     }
   };
 

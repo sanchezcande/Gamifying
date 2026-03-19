@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Easing, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../providers/AuthProvider';
@@ -7,6 +8,7 @@ import { useBattleData } from '../providers/BattleProvider';
 import apiService from '../services/apiService';
 import AvatarCircle from '../components/AvatarCircle';
 import AvatarSprite, { CLASS_GLOW, CLASS_AURA } from '../components/AvatarSprite';
+import AnimatedPressable from '../components/AnimatedPressable';
 import LoadingScreen from '../components/LoadingScreen';
 import {
   AmbientParticles,
@@ -80,7 +82,10 @@ function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
         <Animated.View style={[c.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>
           <LinearGradient colors={['#111', '#0a0a0a']} style={c.inner}>
 
-            <Text style={c.titleTop}>⚔️  CHALLENGE</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <Ionicons name="flash" size={16} color="#fff" />
+              <Text style={c.titleTop}>CHALLENGE</Text>
+            </View>
 
             {/* Fighters preview */}
             <View style={c.fightersRow}>
@@ -124,7 +129,7 @@ function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
               disabled={fighting}
             >
               <LinearGradient colors={[myMove.color, '#8b0000']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={c.fightBtnGrad}>
-                <Text style={c.fightBtnText}>{fighting ? 'LOADING...' : '⚔️  FIGHT NOW'}</Text>
+                <Text style={c.fightBtnText}>{fighting ? 'LOADING...' : 'FIGHT NOW'}</Text>
               </LinearGradient>
             </Pressable>
 
@@ -141,19 +146,21 @@ function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
 
 // ─── HP Bar ───────────────────────────────────────────────────────────────────
 function HPBar({ hpAnim, color, flip }) {
+  const scaleX = hpAnim.interpolate({ inputRange: [0, 100], outputRange: [0, 1] });
   return (
     <View style={[hp.track, flip && { flexDirection: 'row-reverse' }]}>
       <Animated.View style={[hp.fill, {
-        width: hpAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
         backgroundColor: color,
         shadowColor: color, shadowRadius: 6, shadowOpacity: 0.8,
+        transform: [{ scaleX }],
+        transformOrigin: flip ? 'right center' : 'left center',
       }]} />
     </View>
   );
 }
 const hp = StyleSheet.create({
   track: { height: 8, backgroundColor: '#1a1a1a', borderRadius: 99, overflow: 'hidden', flex: 1 },
-  fill:  { height: '100%', borderRadius: 99 },
+  fill:  { height: '100%', width: '100%', borderRadius: 99 },
 });
 
 // ─── Battle Animation Modal ────────────────────────────────────────────────────
@@ -410,7 +417,7 @@ function BattleModal({ open, result, me, target, onClose }) {
         stopCharge(winnerFighter);
         lunge(winnerFighter, winnerDir, () => {
           hitReaction(loserFighter, winnerDir * 2);
-          Animated.timing(loserHP, { toValue: 65, duration: 500, useNativeDriver: false }).start();
+          Animated.timing(loserHP, { toValue: 65, duration: 500, useNativeDriver: true }).start();
         });
       });
     }));
@@ -426,7 +433,7 @@ function BattleModal({ open, result, me, target, onClose }) {
         lunge(loserFighter, loserDir, () => {
           hitReaction(winnerFighter, loserDir * 2);
           const winnerHPBar = won ? myHP : theirHP;
-          Animated.timing(winnerHPBar, { toValue: 80, duration: 500, useNativeDriver: false }).start();
+          Animated.timing(winnerHPBar, { toValue: 80, duration: 500, useNativeDriver: true }).start();
         });
       });
     }));
@@ -471,7 +478,7 @@ function BattleModal({ open, result, me, target, onClose }) {
           ]).start();
 
           // Loser HP → 0
-          Animated.timing(loserHP, { toValue: 0, duration: 600, useNativeDriver: false }).start();
+          Animated.timing(loserHP, { toValue: 0, duration: 600, useNativeDriver: true }).start();
 
           // Loser KO: fly + tilt + fade
           const loserHitX = won ? theirHitX  : myHitX;
@@ -632,7 +639,7 @@ function BattleModal({ open, result, me, target, onClose }) {
           {showResult && (
             <Animated.View style={[b.resultBox, { opacity: resultOpacity, transform: [{ translateY: resultY }] }]}>
               <Text style={[b.resultTitle, { color: won ? '#fff' : '#555', textShadowColor: won ? winnerGlow : 'transparent' }]}>
-                {won ? '🏆  VICTORY' : '💀  DEFEATED'}
+                {won ? 'VICTORY' : 'DEFEATED'}
               </Text>
               {won ? (
                 <View style={b.rewardsRow}>
@@ -711,7 +718,10 @@ export default function BattleScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>⚔️  BATTLE</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+        <Ionicons name="flash" size={24} color="#fff" />
+        <Text style={styles.title}>BATTLE</Text>
+      </View>
       <Text style={styles.subtitle}>Challenge a gym member</Text>
 
       <FlatList
@@ -720,7 +730,7 @@ export default function BattleScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyIcon}>🏟️</Text>
+            <Ionicons name="shield-outline" size={40} color="#333" />
             <Text style={styles.empty}>No opponents in your gym yet.</Text>
           </View>
         }
@@ -736,7 +746,7 @@ export default function BattleScreen() {
                     borderColor:      h.result === 'won' ? '#22C55E33' : '#CC000033',
                   }]}>
                     <Text style={[styles.historyResult, { color: h.result === 'won' ? '#22C55E' : '#CC4444' }]}>
-                      {h.result === 'won' ? '🏆 WON' : '💀 LOST'}
+                      {h.result === 'won' ? 'WON' : 'LOST'}
                     </Text>
                   </View>
                   <Text style={styles.historyDate}>{new Date(h.createdAt).toLocaleDateString()}</Text>
@@ -759,13 +769,24 @@ export default function BattleScreen() {
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.memberName}>{item.name}</Text>
                 <Text style={[styles.moveName, { color: move.color }]}>{move.icon} {move.name}</Text>
-                <Text style={styles.memberMeta}>
-                  {item.statMuscle}💪  {item.statPower}⚡  {item.statEndurance}🛡
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Ionicons name="barbell" size={11} color="#FF6B35" />
+                    <Text style={styles.memberMeta}>{item.statMuscle}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Ionicons name="flash" size={11} color="#3B82F6" />
+                    <Text style={styles.memberMeta}>{item.statPower}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Ionicons name="shield" size={11} color="#22C55E" />
+                    <Text style={styles.memberMeta}>{item.statEndurance}</Text>
+                  </View>
+                </View>
               </View>
-              <Pressable style={[styles.fightBtn, { borderColor: move.color }]} onPress={() => setChallengeTarget(item)}>
+              <AnimatedPressable style={[styles.fightBtn, { borderColor: move.color }]} onPress={() => setChallengeTarget(item)} haptic="medium" scaleDown={0.92}>
                 <Text style={[styles.fightText, { color: move.color }]}>FIGHT</Text>
-              </Pressable>
+              </AnimatedPressable>
             </View>
           );
         }}
@@ -798,7 +819,7 @@ export default function BattleScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.background, paddingHorizontal: 14 },
-  title:        { color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: 1, marginTop: 8 },
+  title:        { color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: 1 },
   subtitle:     { color: '#444', fontSize: 13, marginBottom: 16, marginTop: 2 },
   subTitle:     { color: '#444', fontWeight: '800', fontSize: 11, marginBottom: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
   emptyWrap:    { alignItems: 'center', marginTop: 60, gap: 10 },
@@ -821,7 +842,7 @@ const c = StyleSheet.create({
   backdrop:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   card:        { width: '100%', borderRadius: 18, overflow: 'hidden' },
   inner:       { padding: 24, alignItems: 'center' },
-  titleTop:    { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 4, marginBottom: 20 },
+  titleTop:    { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 4 },
   fightersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 20 },
   fighterSide: { flex: 1, alignItems: 'center', gap: 6 },
   vsCol:       { width: 40, alignItems: 'center' },

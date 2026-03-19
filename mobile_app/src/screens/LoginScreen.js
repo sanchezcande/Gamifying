@@ -1,18 +1,21 @@
 import React, { useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform, Pressable, ScrollView,
-  StyleSheet, Text, TextInput, View
+  KeyboardAvoidingView, Platform, ScrollView,
+  StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import AnimatedPressable from '../components/AnimatedPressable';
 import { useAuth } from '../providers/AuthProvider';
 import { colors, radius } from '../theme/theme';
 
 export default function LoginScreen({ navigation }) {
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const insets = useSafeAreaInsets();
   const passRef = useRef(null);
 
@@ -20,10 +23,13 @@ export default function LoginScreen({ navigation }) {
     setError('');
     if (!email.trim() || !password) { setError('Complete all fields'); return; }
     try {
+      setSubmitting(true);
       await login(email.trim(), password);
-      navigation.replace('Splash');
+      // AppNavigator auto-redirects based on auth state
     } catch (e) {
       setError(e.message || 'Login failed');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -48,7 +54,10 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.formTitle}>Welcome back</Text>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email</Text>
+              <View style={styles.labelRow}>
+                <Ionicons name="mail-outline" size={14} color="#666" />
+                <Text style={styles.label}>Email</Text>
+              </View>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
@@ -57,13 +66,16 @@ export default function LoginScreen({ navigation }) {
                 returnKeyType="next"
                 onSubmitEditing={() => passRef.current?.focus()}
                 placeholder="you@example.com"
-                placeholderTextColor="#444"
+                placeholderTextColor="#333"
                 style={styles.input}
               />
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Password</Text>
+              <View style={styles.labelRow}>
+                <Ionicons name="lock-closed-outline" size={14} color="#666" />
+                <Text style={styles.label}>Password</Text>
+              </View>
               <TextInput
                 ref={passRef}
                 value={password}
@@ -72,27 +84,29 @@ export default function LoginScreen({ navigation }) {
                 returnKeyType="done"
                 onSubmitEditing={onSubmit}
                 placeholder="••••••••"
-                placeholderTextColor="#444"
+                placeholderTextColor="#333"
                 style={styles.input}
               />
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            <Pressable
-              style={({ pressed }) => [styles.btn, pressed && { opacity: 0.85 }, loading && { opacity: 0.6 }]}
+            <AnimatedPressable
+              style={[styles.btn, submitting && { opacity: 0.6 }]}
               onPress={onSubmit}
-              disabled={loading}
+              disabled={submitting}
+              haptic="medium"
+              scaleDown={0.97}
             >
               <LinearGradient colors={['#E00', '#900']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGrad}>
-                <Text style={styles.btnText}>{loading ? 'Logging in...' : 'Log In'}</Text>
+                <Text style={styles.btnText}>{submitting ? 'Logging in...' : 'Log In'}</Text>
               </LinearGradient>
-            </Pressable>
+            </AnimatedPressable>
 
-            <Pressable onPress={() => navigation.navigate('Register')} style={styles.linkRow}>
+            <AnimatedPressable onPress={() => navigation.navigate('Register')} style={styles.linkRow} haptic="light">
               <Text style={styles.linkMuted}>Don't have an account? </Text>
               <Text style={styles.linkAccent}>Register</Text>
-            </Pressable>
+            </AnimatedPressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -109,7 +123,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 14,
-    shadowColor: colors.primary, shadowRadius: 20, shadowOpacity: 0.5, shadowOffset: { width: 0, height: 4 }
+    shadowColor: colors.primary, shadowRadius: 20, shadowOpacity: 0.5, shadowOffset: { width: 0, height: 4 },
   },
   logoLetter: { color: '#fff', fontSize: 34, fontWeight: '900' },
   brandName:  { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 4 },
@@ -123,7 +137,8 @@ const styles = StyleSheet.create({
   },
   formTitle: { color: '#fff', fontSize: 22, fontWeight: '800', marginBottom: 22 },
   fieldGroup: { marginBottom: 16 },
-  label: { color: '#666', fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 7, textTransform: 'uppercase' },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 7 },
+  label: { color: '#666', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
   input: {
     backgroundColor: '#0D0D0D',
     borderWidth: 1,
@@ -135,7 +150,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   error: { color: '#ff4444', fontSize: 13, marginBottom: 12, textAlign: 'center' },
-  btn: { borderRadius: radius.button, overflow: 'hidden', marginTop: 8 },
+  btn: { borderRadius: 14, overflow: 'hidden', marginTop: 8 },
   btnGrad: { paddingVertical: 15, alignItems: 'center' },
   btnText: { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
   linkRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
