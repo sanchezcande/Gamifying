@@ -15,7 +15,7 @@ export default function RegisterScreen({ navigation }) {
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [gymId, setGymId]       = useState('');
+  const [gymCode, setGymCode]   = useState('');
   const [error, setError]       = useState('');
   const [submitting, setSubmitting] = useState(false);
   const insets = useSafeAreaInsets();
@@ -26,13 +26,13 @@ export default function RegisterScreen({ navigation }) {
 
   const onSubmit = async () => {
     setError('');
-    if (!name.trim() || !email.trim() || !password || !gymId.trim()) {
+    if (!name.trim() || !email.trim() || !password || !gymCode.trim()) {
       setError('Please fill in all fields');
       return;
     }
     try {
       setSubmitting(true);
-      await register({ name: name.trim(), email: email.trim(), password, gymId: gymId.trim() });
+      await register({ name: name.trim(), email: email.trim(), password, gymCode: gymCode.trim() });
       // AppNavigator auto-redirects based on auth state — no manual nav needed
     } catch (e) {
       setError(e.message || 'Registration failed');
@@ -45,7 +45,7 @@ export default function RegisterScreen({ navigation }) {
     { label: 'Full Name', value: name, set: setName, placeholder: 'Carlos García', ref: null, next: emailRef, type: 'default', secure: false, iconName: 'person-outline' },
     { label: 'Email', value: email, set: setEmail, placeholder: 'you@example.com', ref: emailRef, next: passRef, type: 'email-address', secure: false, iconName: 'mail-outline' },
     { label: 'Password', value: password, set: setPassword, placeholder: '••••••••', ref: passRef, next: gymRef, type: 'default', secure: true, iconName: 'lock-closed-outline' },
-    { label: 'Gym Code', value: gymId, set: setGymId, placeholder: 'Ask your gym for this', ref: gymRef, next: null, type: 'default', secure: false, iconName: 'fitness-outline' },
+    { label: 'Gym', value: gymCode, set: setGymCode, placeholder: 'Enter 4-digit code', ref: gymRef, next: null, type: 'number-pad', secure: false, iconName: 'fitness-outline' },
   ];
 
   return (

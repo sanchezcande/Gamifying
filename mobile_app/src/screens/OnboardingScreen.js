@@ -129,7 +129,7 @@ export default function OnboardingScreen({ navigation }) {
     if (currentIndex < SLIDES.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
-      navigation.replace('Register');
+      navigation.replace('Login');
     }
   }, [currentIndex, navigation]);
 

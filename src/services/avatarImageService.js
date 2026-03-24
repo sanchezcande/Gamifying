@@ -1,7 +1,14 @@
 const OpenAI = require('openai');
 const { FACE_OPTIONS } = require('../utils/avatarOptions');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openaiClient = null;
+function getOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) return null;
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openaiClient;
+}
 
 // Build lookup maps: id → label
 function buildLookup(items) {
@@ -95,6 +102,11 @@ function buildFaceOptionsFromUser(user = {}) {
 
 async function generateAvatarImage({ gender, avatarClass, faceOptions, bodyStage }) {
   const prompt = buildPrompt({ gender, avatarClass, faceOptions, bodyStage });
+
+  const openai = getOpenAIClient();
+  if (!openai) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
 
   const response = await openai.images.generate({
     model: 'dall-e-3',

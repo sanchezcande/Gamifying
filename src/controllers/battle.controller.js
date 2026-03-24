@@ -5,6 +5,30 @@ const { getAvatarProgress } = require('../services/avatarService');
 const { buildAvatarUrlForUser } = require('../services/avatarImageService');
 const { enqueueAvatarRender } = require('../services/avatarRenderQueue');
 
+const WEEKLY_BATTLE_LIMIT = 2;
+
+function getWeekStart() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? 6 : day - 1; // Monday = start of week
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+async function isChampionshipBattle(challengerId, defenderId, gymId) {
+  const top2 = await prisma.user.findMany({
+    where: { gymId },
+    orderBy: [{ currentMonthXp: 'desc' }, { xp: 'desc' }],
+    take: 2,
+    select: { id: true }
+  });
+  if (top2.length < 2) return false;
+  const topIds = top2.map(u => u.id);
+  return topIds.includes(challengerId) && topIds.includes(defenderId);
+}
+
 async function challenge(req, res) {
   try {
     const challenger = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -14,6 +38,21 @@ async function challenge(req, res) {
     if (challenger.id === defender.id) return fail(res, 400, 'Cannot battle yourself');
     if (!challenger.gymId || challenger.gymId !== defender.gymId) {
       return fail(res, 400, 'Cannot battle users from other gyms');
+    }
+
+    // Weekly battle limit (exempt championship battles between top 2)
+    const isChamp = await isChampionshipBattle(challenger.id, defender.id, challenger.gymId);
+    if (!isChamp) {
+      const weekStart = getWeekStart();
+      const weeklyCount = await prisma.battle.count({
+        where: {
+          challengerId: challenger.id,
+          createdAt: { gte: weekStart }
+        }
+      });
+      if (weeklyCount >= WEEKLY_BATTLE_LIMIT) {
+        return fail(res, 429, 'Weekly battle limit reached (2 per week)');
+      }
     }
 
     const rewards = { gcReward: 50, xpReward: 30 };
@@ -158,4 +197,19 @@ async function leaderboard(req, res) {
   }
 }
 
-module.exports = { challenge, history, leaderboard };
+async function battlesRemaining(req, res) {
+  try {
+    const weekStart = getWeekStart();
+    const weeklyCount = await prisma.battle.count({
+      where: {
+        challengerId: req.user.id,
+        createdAt: { gte: weekStart }
+      }
+    });
+    return ok(res, { remaining: Math.max(0, WEEKLY_BATTLE_LIMIT - weeklyCount), limit: WEEKLY_BATTLE_LIMIT });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+module.exports = { challenge, history, leaderboard, battlesRemaining };

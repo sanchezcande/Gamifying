@@ -71,10 +71,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async ({ name, email, password, gymId }) => {
+  const register = async ({ name, email, password, gymCode, gymId }) => {
     try {
       setError(null);
-      const result = await apiService.register({ name, email, password, gymId });
+      const result = await apiService.register({ name, email, password, gymCode, gymId });
       const { token: newToken, user: regUser } = result.data || {};
       await saveToken(newToken);
       setToken(newToken);

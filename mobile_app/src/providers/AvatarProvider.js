@@ -25,7 +25,7 @@ export function AvatarProvider({ children }) {
 
   const equipItem = async (userId, itemId) => {
     const result = await apiService.equipItem(userId, itemId);
-    setAvatar((prev) => ({ ...prev, equippedCosmetics: result.data }));
+    setAvatar((prev) => prev ? { ...prev, equippedCosmetics: result.data } : prev);
     return result.data;
   };
 

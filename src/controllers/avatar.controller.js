@@ -49,7 +49,8 @@ async function getAvatar(req, res) {
         faceHairColorId: user.faceHairColorId,
         faceSkinToneId: user.faceSkinToneId,
         faceBeardId: user.faceBeardId,
-        faceEyebrowId: user.faceEyebrowId
+        faceEyebrowId: user.faceEyebrowId,
+        faceEyebrowColorId: user.faceEyebrowColorId
       },
       equippedCosmetics,
       activeSupplements,

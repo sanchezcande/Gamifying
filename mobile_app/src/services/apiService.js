@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { clearToken, getToken } from '../utils/storage';
 
-const BASE_URL = 'http://192.168.86.119:3000/api';
+const BASE_URL = 'http://192.168.47.233:3000/api';
 
 class ApiService {
   constructor() {
@@ -58,7 +58,7 @@ class ApiService {
   }
 
   async createAvatar(payload) {
-    return this.unwrap(await this.client.post('/auth/create-avatar', payload));
+    return this.unwrap(await this.client.post('/auth/create-avatar', payload, { timeout: 60000 }));
   }
 
   async checkIn() {
@@ -123,6 +123,10 @@ class ApiService {
 
   async challenge(defenderId) {
     return this.unwrap(await this.client.post(`/battles/challenge/${defenderId}`));
+  }
+
+  async getBattlesRemaining() {
+    return this.unwrap(await this.client.get('/battles/remaining'));
   }
 
   async getCompetitions(gymId) {

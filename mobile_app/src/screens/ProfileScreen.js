@@ -50,12 +50,13 @@ function BodyStageBar({ currentStage }) {
     <View style={bs.row}>
       {Array.from({ length: STAGE_TOTAL }, (_, i) => {
         const stage = i + 1;
+        const isCurrent = stage === currentStage;
         const reached = stage <= currentStage;
         return (
           <React.Fragment key={stage}>
             {i > 0 && <View style={[bs.line, reached && bs.lineActive]} />}
-            <View style={[bs.dot, reached && bs.dotActive]}>
-              <Text style={[bs.dotText, reached && bs.dotTextActive]}>{stage}</Text>
+            <View style={[bs.dot, reached && bs.dotPast, isCurrent && bs.dotCurrent]}>
+              <Text style={[bs.dotText, reached && bs.dotTextPast, isCurrent && bs.dotTextCurrent]}>{stage}</Text>
             </View>
           </React.Fragment>
         );
@@ -64,13 +65,15 @@ function BodyStageBar({ currentStage }) {
   );
 }
 const bs = StyleSheet.create({
-  row:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 10 },
-  line:          { flex: 1, height: 2, backgroundColor: '#222', marginHorizontal: -1 },
-  lineActive:    { backgroundColor: colors.primary + '66' },
-  dot:           { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1A1A1A', borderWidth: 2, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
-  dotActive:     { backgroundColor: colors.primary + '22', borderColor: colors.primary },
-  dotText:       { color: '#444', fontWeight: '800', fontSize: 12 },
-  dotTextActive: { color: colors.primary },
+  row:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 10 },
+  line:           { flex: 1, height: 2, backgroundColor: '#222', marginHorizontal: -1 },
+  lineActive:     { backgroundColor: colors.primary + '66' },
+  dot:            { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1A1A1A', borderWidth: 2, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
+  dotPast:        { backgroundColor: colors.primary + '15', borderColor: colors.primary + '55' },
+  dotCurrent:     { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary + '33', borderColor: colors.primary, borderWidth: 2.5, shadowColor: colors.primary, shadowRadius: 8, shadowOpacity: 0.5, shadowOffset: { width: 0, height: 0 } },
+  dotText:        { color: '#444', fontWeight: '800', fontSize: 12 },
+  dotTextPast:    { color: colors.primary + '88' },
+  dotTextCurrent: { color: '#fff', fontWeight: '900', fontSize: 14 },
 });
 
 function nextClassName(current) {
@@ -105,8 +108,6 @@ export default function ProfileScreen({ navigation }) {
       message: `Join my gym on Gamifying! Use my referral email: ${user?.email}. We both earn +200 PWR + 100 GAINS.`,
     });
   };
-
-  if (avatarLoading && !avatar) return <LoadingScreen />;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>

@@ -1,6 +1,6 @@
 jest.mock('../../src/utils/prisma');
 
-const request = require('supertest');
+const request = require('../helpers/request');
 const app = require('../../src/app');
 const prisma = require('../../src/utils/prisma');
 const { makeToken, mockUser, mockOwner, mockGym, resetPrismaMocks } = require('../helpers');
@@ -128,7 +128,7 @@ describe('GET /api/gyms/:gymId/members', () => {
   });
 
   test('returns 404 if gym not found', async () => {
-    const user = mockUser();
+    const user = mockUser({ gymId: 'nonexistent' });
     prisma.user.findUnique.mockResolvedValueOnce(user);
     prisma.gym.findUnique.mockResolvedValue(null);
 
@@ -142,6 +142,7 @@ describe('GET /api/gyms/:gymId/members', () => {
   test('returns 403 if requesting members of another gym', async () => {
     const user = mockUser({ gymId: 'gym-1' });
     prisma.user.findUnique.mockResolvedValueOnce(user);
+    prisma.gym.findUnique.mockResolvedValue(mockGym({ id: 'other-gym' }));
 
     const res = await request(app)
       .get('/api/gyms/other-gym/members')

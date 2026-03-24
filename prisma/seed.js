@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const { PrismaClient } = require('@prisma/client');
+const { buildAvatarImageUrl } = require('../src/services/avatarImageService');
 
 const prisma = new PrismaClient();
 
@@ -17,7 +18,8 @@ async function main() {
   const gym = await prisma.gym.create({
     data: {
       name: 'Obsidian Gym',
-      location: 'Canggu Bali'
+      location: 'Canggu Bali',
+      gymCode: '4821'
     }
   });
 
@@ -159,6 +161,32 @@ async function main() {
   ]);
 
   await prisma.gym.update({ where: { id: gym.id }, data: { ownerId: users[0].id } });
+
+  // Generate profilePhoto for all seeded users
+  for (const u of users) {
+    const full = await prisma.user.findUnique({ where: { id: u.id } });
+    if (full.avatarGender) {
+      const profilePhoto = buildAvatarImageUrl({
+        name: full.name,
+        avatarClass: full.avatarClass,
+        gender: full.avatarGender,
+        faceOptions: {
+          faceJawId: full.faceJawId,
+          faceCheeksId: full.faceCheeksId,
+          faceEyeShapeId: full.faceEyeShapeId,
+          faceEyeColorId: full.faceEyeColorId,
+          faceNoseId: full.faceNoseId,
+          faceHairStyleId: full.faceHairStyleId,
+          faceHairColorId: full.faceHairColorId,
+          faceSkinToneId: full.faceSkinToneId,
+          faceBeardId: full.faceBeardId,
+          faceEyebrowId: full.faceEyebrowId,
+        },
+        bodyStage: full.avatarBodyStage,
+      });
+      await prisma.user.update({ where: { id: u.id }, data: { profilePhoto } });
+    }
+  }
 
   const items = await Promise.all([
     prisma.shopItem.create({

@@ -47,8 +47,9 @@ export default function AnimatedPressable({
   }, [onPress, haptic, disabled]);
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+    <Animated.View style={[style, { transform: [{ scale }] }]}>
       <Pressable
+        style={{ flex: 1 }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}

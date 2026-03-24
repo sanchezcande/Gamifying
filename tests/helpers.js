@@ -71,6 +71,9 @@ function mockGym(overrides = {}) {
     name: 'Test Gym',
     location: 'Test City',
     ownerId: 'user-owner',
+    gymCode: '4821',
+    qrSecret: 'test-qr-secret',
+    apiKey: 'test-api-key',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides
   };

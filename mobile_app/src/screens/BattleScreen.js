@@ -679,16 +679,19 @@ export default function BattleScreen() {
   const [challengeTarget, setChallengeTarget] = useState(null);
   const [fighting, setFighting]             = useState(false);
   const [battleState, setBattleState]       = useState({ open: false, result: null, target: null });
+  const [battlesRemaining, setBattlesRemaining] = useState(null);
 
   const load = async () => {
     if (!user?.gymId || !user?.id) return;
     setLoading(true);
     try {
-      const [membersRes] = await Promise.all([
+      const [membersRes, , remainingRes] = await Promise.all([
         apiService.getGymMembers(user.gymId),
         loadHistory(user.id),
+        apiService.getBattlesRemaining(),
       ]);
       setMembers((membersRes.data || []).filter(m => m.id && m.id !== user.id));
+      setBattlesRemaining(remainingRes.data);
     } catch (e) {
       Alert.alert('Battle', e.message);
     } finally {
@@ -721,8 +724,17 @@ export default function BattleScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
         <Ionicons name="flash" size={24} color="#fff" />
         <Text style={styles.title}>BATTLE</Text>
+        {battlesRemaining != null && (
+          <View style={styles.remainingBadge}>
+            <Text style={[styles.remainingText, battlesRemaining.remaining === 0 && { color: '#555' }]}>
+              {battlesRemaining.remaining}/{battlesRemaining.limit}
+            </Text>
+          </View>
+        )}
       </View>
-      <Text style={styles.subtitle}>Challenge a gym member</Text>
+      <Text style={styles.subtitle}>
+        {battlesRemaining?.remaining === 0 ? 'No battles left this week' : 'Challenge a gym member'}
+      </Text>
 
       <FlatList
         data={members}
@@ -757,6 +769,7 @@ export default function BattleScreen() {
         }
         renderItem={({ item }) => {
           const move = CLASS_MOVES[item.avatarClass] || CLASS_MOVES.ROOKIE;
+          const noBattles = battlesRemaining?.remaining === 0;
           return (
             <View style={[styles.memberRow, { borderLeftColor: move.color, borderLeftWidth: 3 }]}>
               <AvatarCircle
@@ -784,8 +797,14 @@ export default function BattleScreen() {
                   </View>
                 </View>
               </View>
-              <AnimatedPressable style={[styles.fightBtn, { borderColor: move.color }]} onPress={() => setChallengeTarget(item)} haptic="medium" scaleDown={0.92}>
-                <Text style={[styles.fightText, { color: move.color }]}>FIGHT</Text>
+              <AnimatedPressable
+                style={[styles.fightBtn, { borderColor: noBattles ? '#222' : move.color }]}
+                onPress={() => !noBattles && setChallengeTarget(item)}
+                haptic="medium"
+                scaleDown={0.92}
+                disabled={noBattles}
+              >
+                <Text style={[styles.fightText, { color: noBattles ? '#333' : move.color }]}>FIGHT</Text>
               </AnimatedPressable>
             </View>
           );
@@ -836,6 +855,8 @@ const styles = StyleSheet.create({
   resultBadge:  { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
   historyResult:{ fontWeight: '800', fontSize: 12 },
   historyDate:  { color: '#444', fontSize: 11, marginLeft: 8 },
+  remainingBadge: { marginLeft: 'auto', backgroundColor: '#1a0000', borderRadius: 8, borderWidth: 1, borderColor: colors.primary + '33', paddingHorizontal: 10, paddingVertical: 4 },
+  remainingText:  { color: colors.primary, fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
 });
 
 const c = StyleSheet.create({

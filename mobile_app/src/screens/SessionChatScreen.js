@@ -100,7 +100,7 @@ export default function SessionChatScreen({ route, navigation }) {
             {WORKOUT_LABELS[session.workoutType]} · {formatTime(session.scheduledAt)}
           </Text>
           <Text style={styles.headerSub}>
-            {session.user?.name ?? '?'}'s session · {session.joiners?.length + 1 || 1} going
+            {session.user?.name ?? '?'}'s session · {(session.joiners?.length || 0) + 1} going
           </Text>
         </View>
       </View>

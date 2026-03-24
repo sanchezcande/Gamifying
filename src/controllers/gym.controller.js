@@ -8,8 +8,10 @@ async function createGym(req, res) {
     const { name, location } = req.body;
     if (!name || !location) return fail(res, 400, 'name and location are required');
 
+    const gymCode = String(Math.floor(1000 + Math.random() * 9000));
+
     const updatedGym = await prisma.$transaction(async (tx) => {
-      const gym = await tx.gym.create({ data: { name, location } });
+      const gym = await tx.gym.create({ data: { name, location, gymCode } });
 
       await tx.user.update({
         where: { id: req.user.id },
@@ -60,10 +62,9 @@ async function getGym(req, res) {
 async function getGymMembers(req, res) {
   try {
     const { gymId } = req.params;
-    if (req.user.gymId !== gymId) return fail(res, 403, 'Forbidden');
-
     const gym = await prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym) return fail(res, 404, 'Gym not found');
+    if (req.user.gymId !== gymId) return fail(res, 403, 'Forbidden');
 
     const members = await prisma.user.findMany({
       where: { gymId, NOT: { id: req.user.id } },
@@ -84,6 +85,7 @@ async function getGymMembers(req, res) {
         faceSkinToneId: true,
         faceBeardId: true,
         faceEyebrowId: true,
+        faceEyebrowColorId: true,
         statMuscle: true,
         statEndurance: true,
         statPower: true,

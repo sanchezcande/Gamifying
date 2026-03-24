@@ -1,6 +1,6 @@
 jest.mock('../../src/utils/prisma');
 
-const request = require('supertest');
+const request = require('../helpers/request');
 const app = require('../../src/app');
 const prisma = require('../../src/utils/prisma');
 const { makeToken, mockUser, mockCosmeticItem, resetPrismaMocks } = require('../helpers');

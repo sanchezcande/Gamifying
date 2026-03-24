@@ -3,7 +3,6 @@ import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AnimatedPressable from '../components/AnimatedPressable';
 import { useAuth } from '../providers/AuthProvider';
 import { useLeaderboardData } from '../providers/LeaderboardProvider';
 import apiService from '../services/apiService';
@@ -206,58 +205,21 @@ const row = StyleSheet.create({
   xpUnit:   { color: '#555', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
 });
 
-// ── Tab Selector ─────────────────────────────────────────────────────────────
-function LeaderboardTabs({ tab, setTab }) {
-  return (
-    <View style={tabStyles.row}>
-      {[
-        { key: 'XP', label: 'XP Ranking' },
-        { key: 'BODY', label: 'Bodybuilding' },
-      ].map((t) => (
-        <AnimatedPressable
-          key={t.key}
-          style={[tabStyles.btn, tab === t.key && tabStyles.btnActive]}
-          onPress={() => setTab(t.key)}
-          haptic="light"
-          scaleDown={0.96}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <Ionicons name={t.key === 'XP' ? 'flash' : 'barbell'} size={14} color={tab === t.key ? '#fff' : '#555'} />
-            <Text style={[tabStyles.text, tab === t.key && tabStyles.textActive]}>{t.label}</Text>
-          </View>
-        </AnimatedPressable>
-      ))}
-    </View>
-  );
-}
-const tabStyles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 14 },
-  btn: {
-    flex: 1, paddingVertical: 10, borderRadius: 12,
-    borderWidth: 1, borderColor: '#222', backgroundColor: '#111',
-    alignItems: 'center',
-  },
-  btnActive: { borderColor: colors.primary, backgroundColor: '#1a0000' },
-  text:      { color: '#555', fontWeight: '700', fontSize: 12 },
-  textActive:{ color: '#fff' },
-});
-
 // ── Screen ───────────────────────────────────────────────────────────────────
 export default function LeaderboardScreen() {
   const { user } = useAuth();
   const { entries, loading, loadLeaderboard } = useLeaderboardData();
   const [gymName, setGymName] = useState('');
-  const [tab, setTab] = useState('XP');
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!user?.gymId) return;
-    loadLeaderboard(user.gymId, tab);
+    loadLeaderboard(user.gymId);
     apiService
       .getGym(user.gymId)
       .then((res) => setGymName(`${res.data.name} · ${res.data.location}`))
       .catch(() => {});
-  }, [user?.gymId, tab]);
+  }, [user?.gymId]);
 
   if (loading) return <LoadingScreen />;
 
@@ -275,8 +237,6 @@ export default function LeaderboardScreen() {
         <Text style={s.title}>RANKING</Text>
         {gymName ? <Text style={s.gymName}>{gymName}</Text> : null}
       </LinearGradient>
-
-      <LeaderboardTabs tab={tab} setTab={setTab} />
 
       <ScrollView
         contentContainerStyle={[s.list, { paddingBottom: BANNER_H + insets.bottom + 16 }]}

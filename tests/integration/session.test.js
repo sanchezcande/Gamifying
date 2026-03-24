@@ -1,7 +1,7 @@
 jest.mock('../../src/utils/prisma');
 jest.mock('../../src/services/notificationService');
 
-const request = require('supertest');
+const request = require('../helpers/request');
 const app = require('../../src/app');
 const prisma = require('../../src/utils/prisma');
 const { sendPushNotifications } = require('../../src/services/notificationService');

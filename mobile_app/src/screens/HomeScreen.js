@@ -342,15 +342,15 @@ const styles = StyleSheet.create({
 
   // Header
   header:     { paddingHorizontal: 18, paddingBottom: 22 },
-  headerTop:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
+  headerTop:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
   brand:      { color: colors.primary, fontWeight: '900', fontSize: 17, letterSpacing: 2 },
   gymLabel:   { color: '#444', fontSize: 12, fontWeight: '600', marginTop: 2 },
 
   coinsBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: '#1A1400', borderRadius: 99,
-    borderWidth: 1, borderColor: '#D4AF3733',
-    paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: '#D4AF3744',
+    paddingHorizontal: 10, paddingVertical: 5,
   },
   coinsVal:  { fontWeight: '900', fontSize: 14 },
 
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   xpRow:       { gap: 4 },
   xpLabel:     { color: '#555', fontSize: 11, marginTop: 3 },
 
-  body: { paddingHorizontal: 16, paddingTop: 14 },
+  body: { paddingHorizontal: 18, paddingTop: 14 },
 
   // QR Actions
   qrActionsRow: { flexDirection: 'row', gap: 10 },

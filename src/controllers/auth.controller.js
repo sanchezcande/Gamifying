@@ -13,26 +13,44 @@ function signToken(userId) {
 
 async function register(req, res) {
   try {
-    const { name, email, password, gymId } = req.body;
-    if (!name || !email || !password) return fail(res, 400, 'Missing required fields');
+    const { name, email, password, gymId, gymCode } = req.body;
+    console.log('[REGISTER] attempt:', { name, email, gymId, gymCode });
 
-    if (gymId) {
-      const gym = await prisma.gym.findUnique({ where: { id: gymId } });
-      if (!gym) return fail(res, 404, 'Gym not found');
+    if (!name || !email || !password) {
+      console.log('[REGISTER] missing fields');
+      return fail(res, 400, 'Missing required fields');
+    }
+
+    let resolvedGymId = null;
+    if (gymId || gymCode) {
+      const gym = await prisma.gym.findUnique({
+        where: gymId ? { id: gymId } : { gymCode: gymCode.trim() }
+      });
+      if (!gym) {
+        console.log('[REGISTER] gym not found:', gymId || gymCode);
+        return fail(res, 404, gymId ? 'Gym not found' : 'Invalid gym code');
+      }
+      resolvedGymId = gym.id;
+      console.log('[REGISTER] gym found:', gym.name);
     }
 
     const exists = await prisma.user.findUnique({ where: { email } });
-    if (exists) return fail(res, 400, 'Email already in use');
+    if (exists) {
+      console.log('[REGISTER] email already in use:', email);
+      return fail(res, 400, 'Email already in use');
+    }
 
     const hashed = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { name, email, password: hashed, gymId: gymId || null }
+      data: { name, email, password: hashed, gymId: resolvedGymId }
     });
     const { password: _password, ...safeUser } = user;
 
+    console.log('[REGISTER] success:', user.id);
     const token = signToken(user.id);
     return ok(res, { token, user: safeUser });
   } catch (error) {
+    console.error('[REGISTER] error:', error.message);
     return fail(res, 500, error.message);
   }
 }
@@ -93,21 +111,15 @@ async function createAvatar(req, res) {
     const avatarClass = getAvatarClass(req.user.xp);
     const avatarBodyStage = getBodyStage(req.user.statMuscle + req.user.statEndurance + req.user.statPower);
 
-    // Generate avatar image with DALL-E, fall back to Pollinations URL on error
-    let profilePhoto;
-    try {
-      profilePhoto = await generateAvatarImage({ gender, avatarClass, faceOptions, bodyStage: avatarBodyStage });
-    } catch (imgErr) {
-      console.error('DALL-E generation failed, using fallback:', imgErr.message);
-      profilePhoto = buildAvatarImageUrl({
-        name: req.user.name,
-        avatarClass,
-        gender,
-        faceOptions,
-        imageVariant,
-        bodyStage: avatarBodyStage
-      });
-    }
+    // Save avatar immediately with fallback image, respond fast
+    const fallbackPhoto = buildAvatarImageUrl({
+      name: req.user.name,
+      avatarClass,
+      gender,
+      faceOptions,
+      imageVariant,
+      bodyStage: avatarBodyStage
+    });
 
     const user = await prisma.user.update({
       where: { id: req.user.id },
@@ -116,10 +128,32 @@ async function createAvatar(req, res) {
         faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
         faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
         faceBeardId, faceEyebrowId, faceEyebrowColorId,
-        profilePhoto,
+        profilePhoto: fallbackPhoto,
         avatarClass,
         avatarBodyStage
       }
+    });
+    const { password: _password, ...safeUser } = user;
+
+    // Generate DALL-E image in background, update when ready
+    generateAvatarImage({ gender, avatarClass, faceOptions, bodyStage: avatarBodyStage })
+      .then((dalleUrl) => prisma.user.update({ where: { id: req.user.id }, data: { profilePhoto: dalleUrl } }))
+      .catch((err) => console.error('Background DALL-E generation failed:', err.message));
+
+    return ok(res, safeUser);
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+async function updateProfilePhoto(req, res) {
+  try {
+    const { profilePhoto } = req.body;
+    if (!profilePhoto) return fail(res, 400, 'profilePhoto is required');
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { profilePhoto }
     });
     const { password: _password, ...safeUser } = user;
 
@@ -129,4 +163,4 @@ async function createAvatar(req, res) {
   }
 }
 
-module.exports = { register, login, me, createAvatar, signToken };
+module.exports = { register, login, me, createAvatar, updateProfilePhoto, signToken };

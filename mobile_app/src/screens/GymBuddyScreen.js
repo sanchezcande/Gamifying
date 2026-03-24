@@ -756,14 +756,15 @@ const styles = StyleSheet.create({
   modalCancelBtn: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: '#1A1A1A',
     borderWidth: 1,
-    borderColor: '#1E1E1E',
+    borderColor: '#333',
     borderRadius: 99,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  modalCancelText: { color: colors.textSecondary, fontWeight: '700' },
+  modalCancelText: { color: '#AAA', fontWeight: '700', fontSize: 13 },
   modalConfirmBtn: {
     flex: 2,
     borderRadius: 99,

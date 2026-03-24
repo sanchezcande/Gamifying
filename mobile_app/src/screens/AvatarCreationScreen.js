@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AnimatedPressable from '../components/AnimatedPressable';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
-import AvatarCircle from '../components/AvatarCircle';
 import { colors, gradients } from '../theme/theme';
 
 let Haptics;
@@ -320,8 +319,6 @@ export default function AvatarCreationScreen({ navigation, route }) {
     bounceAvatar();
   };
 
-  const previewName = user?.name || 'Preview';
-
   const save = async () => {
     try {
       setLoading(true);
@@ -372,20 +369,24 @@ export default function AvatarCreationScreen({ navigation, route }) {
             <Text style={styles.stepTitle}>{STEPS[step].title}</Text>
             <Text style={styles.stepSubtitle}>{STEPS[step].subtitle}</Text>
           </View>
-          <View style={styles.stepCounter}>
-            <Text style={styles.stepCounterText}>{step + 1}</Text>
-            <Text style={styles.stepCounterTotal}>/{STEPS.length}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={styles.stepCounter}>
+              <Text style={styles.stepCounterText}>{step + 1}</Text>
+              <Text style={styles.stepCounterTotal}>/{STEPS.length}</Text>
+            </View>
+            {editing && (
+              <AnimatedPressable style={styles.closeBtn} onPress={() => navigation.goBack()} haptic="light" scaleDown={0.85}>
+                <Ionicons name="close" size={20} color="#888" />
+              </AnimatedPressable>
+            )}
           </View>
         </View>
 
         {/* Avatar preview */}
         <Animated.View style={[styles.previewWrap, { transform: [{ scale: avatarBounce }] }]}>
-          <AvatarCircle
-            name={previewName}
-            avatarClass={user?.avatarClass || 'ROOKIE'}
-            size={90}
-            bodyStage={user?.avatarBodyStage}
-          />
+          <View style={styles.previewCircle}>
+            <Ionicons name="person" size={44} color="#555" />
+          </View>
         </Animated.View>
 
         {/* Randomize button */}
@@ -413,14 +414,11 @@ export default function AvatarCreationScreen({ navigation, route }) {
                     key={g}
                     style={[styles.genderCard, gender === g && styles.genderCardActive]}
                     onPress={() => { setGender(g); hapticTap(); bounceAvatar(); }}
-                    scaleDown={0.95}
+                    scaleDown={0.96}
                     haptic={null}
                   >
-                    <View style={[styles.genderIconWrap, gender === g && { backgroundColor: colors.primary + '22', borderColor: colors.primary }]}>
-                      <Ionicons name={g === 'MALE' ? 'man' : 'woman'} size={36} color={gender === g ? colors.primary : '#555'} />
-                    </View>
+                    <Ionicons name={g === 'MALE' ? 'man' : 'woman'} size={24} color={gender === g ? colors.primary : '#555'} />
                     <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>{g}</Text>
-                    {gender === g && <View style={styles.genderDot} />}
                   </AnimatedPressable>
                 ))}
               </View>
@@ -598,6 +596,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  previewCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 2,
+    borderColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Close button (edit mode)
+  closeBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   // Randomize
   randomizeBtn: {
@@ -629,35 +649,25 @@ const styles = StyleSheet.create({
   },
 
   // Gender cards
-  genderRow: { flexDirection: 'row', gap: 12 },
+  genderRow: { flexDirection: 'row', gap: 10 },
   genderCard: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#111',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#222',
-    borderRadius: 20,
-    paddingVertical: 28,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
   genderCardActive: {
     borderColor: colors.primary,
     backgroundColor: '#1a0808',
-    shadowColor: colors.primary,
-    shadowRadius: 20,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 0 },
   },
-  genderIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#1a1a1a', borderWidth: 2, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
-  genderText: { color: '#555', fontWeight: '800', fontSize: 14, letterSpacing: 1 },
+  genderText: { color: '#555', fontWeight: '800', fontSize: 13, letterSpacing: 1 },
   genderTextActive: { color: '#fff' },
-  genderDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-    marginTop: 4,
-  },
 
   // Confirm
   confirmSection: { gap: 16 },

@@ -7,6 +7,249 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                 String           @id @default(cuid())
+  name               String
+  email              String           @unique
+  password           String
+  gymId              String?
+  isOwner            Boolean          @default(false)
+  xp                 Int              @default(0)
+  currentMonthXp     Int              @default(0)
+  gymCoins           Int              @default(0)
+  avatarClass        AvatarClass      @default(ROOKIE)
+  avatarBodyStage    Int              @default(1)
+  statMuscle         Int              @default(0)
+  statEndurance      Int              @default(0)
+  statPower          Int              @default(0)
+  visitStreak        Int              @default(0)
+  lastVisitDate      DateTime?
+  referredBy         String?
+  avatarGender       AvatarGender?
+  faceJawId          Int?
+  faceCheeksId       Int?
+  faceEyeShapeId     Int?
+  faceEyeColorId     Int?
+  faceNoseId         Int?
+  faceHairStyleId    Int?
+  faceHairColorId    Int?
+  faceSkinToneId     Int?
+  faceBeardId        Int?
+  faceEyebrowId      Int?
+  createdAt          DateTime         @default(now())
+  pushToken          String?
+  profilePhoto       String?
+  faceEyebrowColorId Int?
+  challengerBattles  Battle[]         @relation("Challenger")
+  defenderBattles    Battle[]         @relation("Defender")
+  wonBattles         Battle[]         @relation("BattleWinner")
+  checkIns           CheckIn[]
+  secondCompetitions Competition[]    @relation("CompetitionSecond")
+  thirdCompetitions  Competition[]    @relation("CompetitionThird")
+  wonCompetitions    Competition[]    @relation("CompetitionWinner")
+  ownedGym           Gym?             @relation("GymOwner")
+  gymSessions        GymSession[]
+  purchases          Purchase[]
+  referredLinks      Referral[]       @relation("Referred")
+  referrerLinks      Referral[]       @relation("Referrer")
+  sessionJoins       SessionJoin[]
+  sessionMessages    SessionMessage[]
+  gym                Gym?             @relation("GymMembers", fields: [gymId], references: [id])
+  userItems          UserItem[]
+}
+
+model Gym {
+  id           String        @id @default(cuid())
+  name         String
+  location     String
+  ownerId      String?       @unique
+  createdAt    DateTime      @default(now())
+  apiKey       String        @unique @default(cuid())
+  qrSecret     String        @unique @default(cuid())
+  gymCode      String        @unique
+  battles      Battle[]
+  checkIns     CheckIn[]
+  competitions Competition[]
+  owner        User?         @relation("GymOwner", fields: [ownerId], references: [id])
+  gymSessions  GymSession[]
+  purchases    Purchase[]
+  members      User[]        @relation("GymMembers")
+}
+
+model CheckIn {
+  id              String        @id @default(cuid())
+  userId          String
+  gymId           String
+  xpEarned        Int
+  gcEarned        Int
+  muscleGained    Int
+  enduranceGained Int
+  powerGained     Int
+  createdAt       DateTime      @default(now())
+  method          CheckinMethod @default(QR)
+  gym             Gym           @relation(fields: [gymId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model Purchase {
+  id        String   @id @default(cuid())
+  userId    String
+  gymId     String
+  amount    Float
+  gcEarned  Int
+  createdAt DateTime @default(now())
+  gym       Gym      @relation(fields: [gymId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Referral {
+  id         String   @id @default(cuid())
+  referrerId String
+  referredId String
+  xpEarned   Int
+  gcEarned   Int
+  createdAt  DateTime @default(now())
+  referred   User     @relation("Referred", fields: [referredId], references: [id])
+  referrer   User     @relation("Referrer", fields: [referrerId], references: [id])
+
+  @@unique([referrerId, referredId])
+}
+
+model ShopItem {
+  id                     String       @id @default(cuid())
+  name                   String
+  description            String
+  type                   ShopItemType
+  category               ShopCategory
+  gcCost                 Int
+  effectDurationDays     Int?
+  effectMuscleBoost      Float        @default(0)
+  effectPowerBoost       Float        @default(0)
+  effectXPMultiplier     Float        @default(1.0)
+  effectStatBoostPercent Float        @default(0)
+  isCosmetic             Boolean      @default(false)
+  userItems              UserItem[]
+}
+
+model UserItem {
+  id          String    @id @default(cuid())
+  userId      String
+  shopItemId  String
+  purchasedAt DateTime  @default(now())
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  isEquipped  Boolean   @default(false)
+  shopItem    ShopItem  @relation(fields: [shopItemId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, isActive])
+}
+
+model Battle {
+  id                    String   @id @default(cuid())
+  challengerId          String
+  defenderId            String
+  gymId                 String
+  challengerProbability Float
+  defenderProbability   Float
+  winnerId              String
+  gcReward              Int      @default(50)
+  xpReward              Int      @default(30)
+  createdAt             DateTime @default(now())
+  challenger            User     @relation("Challenger", fields: [challengerId], references: [id])
+  defender              User     @relation("Defender", fields: [defenderId], references: [id])
+  gym                   Gym      @relation(fields: [gymId], references: [id])
+  winner                User     @relation("BattleWinner", fields: [winnerId], references: [id])
+
+  @@index([gymId, createdAt])
+}
+
+model Competition {
+  id        String            @id @default(cuid())
+  gymId     String
+  month     Int
+  year      Int
+  winnerId  String?
+  secondId  String?
+  thirdId   String?
+  prize     String
+  status    CompetitionStatus @default(ACTIVE)
+  createdAt DateTime          @default(now())
+  gym       Gym               @relation(fields: [gymId], references: [id])
+  second    User?             @relation("CompetitionSecond", fields: [secondId], references: [id])
+  third     User?             @relation("CompetitionThird", fields: [thirdId], references: [id])
+  winner    User?             @relation("CompetitionWinner", fields: [winnerId], references: [id])
+
+  @@unique([gymId, month, year])
+}
+
+model GymSession {
+  id             String           @id @default(cuid())
+  userId         String
+  gymId          String
+  workoutType    WorkoutType
+  scheduledAt    DateTime
+  spotsAvailable Int              @default(0)
+  note           String?
+  cancelled      Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  gym            Gym              @relation(fields: [gymId], references: [id])
+  user           User             @relation(fields: [userId], references: [id])
+  joiners        SessionJoin[]
+  messages       SessionMessage[]
+
+  @@index([gymId, scheduledAt])
+}
+
+model SessionJoin {
+  id        String     @id @default(cuid())
+  sessionId String
+  userId    String
+  createdAt DateTime   @default(now())
+  session   GymSession @relation(fields: [sessionId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@unique([sessionId, userId])
+}
+
+model SessionMessage {
+  id        String     @id @default(cuid())
+  sessionId String
+  userId    String
+  text      String
+  createdAt DateTime   @default(now())
+  session   GymSession @relation(fields: [sessionId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([sessionId, createdAt])
+}
+
+model AvatarRenderJob {
+  id              String             @id @default(cuid())
+  userId          String             @unique
+  avatarClass     AvatarClass
+  avatarBodyStage Int
+  status          AvatarRenderStatus @default(PENDING)
+  attempts        Int                @default(0)
+  lastError       String?
+  lockedAt        DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model AvatarRenderMetric {
+  id        String   @id @default(cuid())
+  day       String   @unique
+  processed Int      @default(0)
+  failed    Int      @default(0)
+  totalMs   Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 enum AvatarClass {
   ROOKIE
   FIGHTER
@@ -59,258 +302,4 @@ enum AvatarRenderStatus {
   IN_PROGRESS
   DONE
   FAILED
-}
-
-model User {
-  id               String      @id @default(cuid())
-  name             String
-  email            String      @unique
-  password         String
-  gymId            String?
-  isOwner          Boolean     @default(false)
-  xp               Int         @default(0)
-  currentMonthXp   Int         @default(0)
-  gymCoins         Int         @default(0)
-  avatarClass      AvatarClass @default(ROOKIE)
-  avatarBodyStage  Int         @default(1)
-  statMuscle       Int         @default(0)
-  statEndurance    Int         @default(0)
-  statPower        Int         @default(0)
-  visitStreak      Int         @default(0)
-  lastVisitDate    DateTime?
-  referredBy       String?
-  avatarGender     AvatarGender?
-  faceJawId        Int?
-  faceCheeksId     Int?
-  faceEyeShapeId   Int?
-  faceEyeColorId   Int?
-  faceNoseId       Int?
-  faceHairStyleId  Int?
-  faceHairColorId  Int?
-  faceSkinToneId   Int?
-  faceBeardId      Int?
-  faceEyebrowId    Int?
-  faceEyebrowColorId Int?
-  profilePhoto     String?
-  pushToken        String?
-  createdAt        DateTime    @default(now())
-
-  gym              Gym?        @relation("GymMembers", fields: [gymId], references: [id])
-  ownedGym         Gym?        @relation("GymOwner")
-  checkIns         CheckIn[]
-  purchases        Purchase[]
-  referrerLinks    Referral[]  @relation("Referrer")
-  referredLinks    Referral[]  @relation("Referred")
-  userItems        UserItem[]
-  challengerBattles Battle[]   @relation("Challenger")
-  defenderBattles   Battle[]   @relation("Defender")
-  wonBattles        Battle[]   @relation("BattleWinner")
-  wonCompetitions   Competition[] @relation("CompetitionWinner")
-  secondCompetitions Competition[] @relation("CompetitionSecond")
-  thirdCompetitions Competition[] @relation("CompetitionThird")
-  gymSessions      GymSession[]
-  sessionJoins     SessionJoin[]
-  sessionMessages  SessionMessage[]
-}
-
-model Gym {
-  id           String        @id @default(cuid())
-  name         String
-  location     String
-  ownerId      String?       @unique
-  qrSecret     String        @unique @default(cuid())
-  apiKey       String        @unique @default(cuid())
-  createdAt    DateTime      @default(now())
-
-  owner        User?         @relation("GymOwner", fields: [ownerId], references: [id])
-  members      User[]        @relation("GymMembers")
-  checkIns     CheckIn[]
-  purchases    Purchase[]
-  battles      Battle[]
-  competitions Competition[]
-  gymSessions  GymSession[]
-}
-
-model CheckIn {
-  id              String        @id @default(cuid())
-  userId          String
-  gymId           String
-  method          CheckinMethod @default(QR)
-  xpEarned        Int
-  gcEarned        Int
-  muscleGained    Int
-  enduranceGained Int
-  powerGained     Int
-  createdAt       DateTime      @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-  gym  Gym  @relation(fields: [gymId], references: [id])
-
-  @@index([userId, createdAt])
-}
-
-model Purchase {
-  id        String   @id @default(cuid())
-  userId    String
-  gymId     String
-  amount    Float
-  gcEarned  Int
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-  gym  Gym  @relation(fields: [gymId], references: [id])
-}
-
-model Referral {
-  id         String   @id @default(cuid())
-  referrerId String
-  referredId String
-  xpEarned   Int
-  gcEarned   Int
-  createdAt  DateTime @default(now())
-
-  referrer User @relation("Referrer", fields: [referrerId], references: [id])
-  referred User @relation("Referred", fields: [referredId], references: [id])
-
-  @@unique([referrerId, referredId])
-}
-
-model ShopItem {
-  id                     String       @id @default(cuid())
-  name                   String
-  description            String
-  type                   ShopItemType
-  category               ShopCategory
-  gcCost                 Int
-  effectDurationDays     Int?
-  effectMuscleBoost      Float        @default(0)
-  effectPowerBoost       Float        @default(0)
-  effectXPMultiplier     Float        @default(1.0)
-  effectStatBoostPercent Float        @default(0)
-  isCosmetic             Boolean      @default(false)
-
-  userItems UserItem[]
-}
-
-model UserItem {
-  id          String   @id @default(cuid())
-  userId      String
-  shopItemId  String
-  purchasedAt DateTime @default(now())
-  expiresAt   DateTime?
-  isActive    Boolean  @default(true)
-  isEquipped  Boolean  @default(false)
-
-  user     User     @relation(fields: [userId], references: [id])
-  shopItem ShopItem @relation(fields: [shopItemId], references: [id])
-
-  @@index([userId, isActive])
-}
-
-model Battle {
-  id                    String   @id @default(cuid())
-  challengerId          String
-  defenderId            String
-  gymId                 String
-  challengerProbability Float
-  defenderProbability   Float
-  winnerId              String
-  gcReward              Int      @default(50)
-  xpReward              Int      @default(30)
-  createdAt             DateTime @default(now())
-
-  challenger User @relation("Challenger", fields: [challengerId], references: [id])
-  defender   User @relation("Defender", fields: [defenderId], references: [id])
-  winner     User @relation("BattleWinner", fields: [winnerId], references: [id])
-  gym        Gym  @relation(fields: [gymId], references: [id])
-
-  @@index([gymId, createdAt])
-}
-
-model Competition {
-  id        String            @id @default(cuid())
-  gymId     String
-  month     Int
-  year      Int
-  winnerId  String?
-  secondId  String?
-  thirdId   String?
-  prize     String
-  status    CompetitionStatus @default(ACTIVE)
-  createdAt DateTime          @default(now())
-
-  gym    Gym   @relation(fields: [gymId], references: [id])
-  winner User? @relation("CompetitionWinner", fields: [winnerId], references: [id])
-  second User? @relation("CompetitionSecond", fields: [secondId], references: [id])
-  third  User? @relation("CompetitionThird", fields: [thirdId], references: [id])
-
-  @@unique([gymId, month, year])
-}
-
-model GymSession {
-  id             String      @id @default(cuid())
-  userId         String
-  gymId          String
-  workoutType    WorkoutType
-  scheduledAt    DateTime
-  spotsAvailable Int         @default(0)
-  note           String?
-  cancelled      Boolean     @default(false)
-  createdAt      DateTime    @default(now())
-
-  user     User             @relation(fields: [userId], references: [id])
-  gym      Gym              @relation(fields: [gymId], references: [id])
-  joiners  SessionJoin[]
-  messages SessionMessage[]
-
-  @@index([gymId, scheduledAt])
-}
-
-model SessionJoin {
-  id        String   @id @default(cuid())
-  sessionId String
-  userId    String
-  createdAt DateTime @default(now())
-
-  session GymSession @relation(fields: [sessionId], references: [id])
-  user    User       @relation(fields: [userId], references: [id])
-
-  @@unique([sessionId, userId])
-}
-
-model SessionMessage {
-  id        String   @id @default(cuid())
-  sessionId String
-  userId    String
-  text      String
-  createdAt DateTime @default(now())
-
-  session GymSession @relation(fields: [sessionId], references: [id])
-  user    User       @relation(fields: [userId], references: [id])
-
-  @@index([sessionId, createdAt])
-}
-
-model AvatarRenderJob {
-  id              String             @id @default(cuid())
-  userId          String             @unique
-  avatarClass     AvatarClass
-  avatarBodyStage Int
-  status          AvatarRenderStatus @default(PENDING)
-  attempts        Int                @default(0)
-  lastError       String?
-  lockedAt        DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-
-  @@index([status, createdAt])
-}
-
-model AvatarRenderMetric {
-  id        String   @id @default(cuid())
-  day       String   @unique
-  processed Int      @default(0)
-  failed    Int      @default(0)
-  totalMs   Int      @default(0)
-  updatedAt DateTime @updatedAt
 }

@@ -1,6 +1,10 @@
 jest.mock('../../src/utils/prisma');
+jest.mock('../../src/services/avatarImageService', () => ({
+  generateAvatarImage: jest.fn().mockResolvedValue('https://img.example.com/avatar.png'),
+  buildAvatarImageUrl: jest.fn().mockReturnValue('https://img.example.com/fallback.png'),
+}));
 
-const request = require('supertest');
+const request = require('../helpers/request');
 const bcrypt = require('bcrypt');
 const app = require('../../src/app');
 const prisma = require('../../src/utils/prisma');
@@ -24,15 +28,15 @@ describe('POST /api/auth/register', () => {
     expect(res.body.data.user).not.toHaveProperty('password');
   });
 
-  test('registers with a valid gymId', async () => {
-    const gym = { id: 'gym-1', name: 'Test Gym', location: 'City' };
+  test('registers with a valid gymCode', async () => {
+    const gym = { id: 'gym-1', name: 'Test Gym', location: 'City', gymCode: '4821' };
     prisma.gym.findUnique.mockResolvedValue(gym);
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.user.create.mockResolvedValue(mockUser({ gymId: 'gym-1' }));
 
     const res = await request(app)
       .post('/api/auth/register')
-      .send({ name: 'Bob', email: 'bob@test.com', password: 'pass123', gymId: 'gym-1' });
+      .send({ name: 'Bob', email: 'bob@test.com', password: 'pass123', gymCode: '4821' });
 
     expect(res.status).toBe(200);
     expect(res.body.data.user.gymId).toBe('gym-1');
@@ -48,15 +52,15 @@ describe('POST /api/auth/register', () => {
     expect(res.body.error).toMatch(/missing/i);
   });
 
-  test('returns 404 if gymId does not exist', async () => {
+  test('returns 404 if gymCode does not exist', async () => {
     prisma.gym.findUnique.mockResolvedValue(null);
 
     const res = await request(app)
       .post('/api/auth/register')
-      .send({ name: 'Carol', email: 'carol@test.com', password: 'pass', gymId: 'nonexistent' });
+      .send({ name: 'Carol', email: 'carol@test.com', password: 'pass', gymCode: '9999' });
 
     expect(res.status).toBe(404);
-    expect(res.body.error).toMatch(/gym not found/i);
+    expect(res.body.error).toMatch(/invalid gym code/i);
   });
 
   test('returns 400 if email is already in use', async () => {
@@ -154,45 +158,11 @@ describe('GET /api/auth/me', () => {
   });
 });
 
-describe('PUT /api/auth/profile-photo', () => {
-  test('updates profile photo URL', async () => {
-    const user = mockUser();
-    prisma.user.findUnique.mockResolvedValue(user);
-    prisma.user.update.mockResolvedValue({ ...user, profilePhoto: 'https://example.com/photo.jpg' });
-
-    const res = await request(app)
-      .put('/api/auth/profile-photo')
-      .set('Authorization', `Bearer ${makeToken(user.id)}`)
-      .send({ profilePhoto: 'https://example.com/photo.jpg' });
-
-    expect(res.status).toBe(200);
-    expect(res.body.data).not.toHaveProperty('password');
-  });
-
-  test('returns 400 if profilePhoto is missing', async () => {
-    const user = mockUser();
-    prisma.user.findUnique.mockResolvedValue(user);
-
-    const res = await request(app)
-      .put('/api/auth/profile-photo')
-      .set('Authorization', `Bearer ${makeToken(user.id)}`)
-      .send({});
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/profilePhoto is required/i);
-  });
-
-  test('returns 401 without auth', async () => {
-    const res = await request(app).put('/api/auth/profile-photo').send({ profilePhoto: 'url' });
-    expect(res.status).toBe(401);
-  });
-});
-
 describe('POST /api/auth/create-avatar', () => {
   test('creates avatar successfully', async () => {
     const user = mockUser({ avatarGender: null });
     prisma.user.findUnique.mockResolvedValue(user);
-    prisma.user.update.mockResolvedValue({ ...user, avatarGender: 'MALE' });
+    prisma.user.update.mockResolvedValue({ ...user, avatarGender: 'MALE', profilePhoto: 'https://img.example.com/avatar.png' });
 
     const res = await request(app)
       .post('/api/auth/create-avatar')
