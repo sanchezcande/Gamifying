@@ -73,6 +73,21 @@ class ApiService {
     return this.unwrap(await this.client.get(`/checkins/user/${userId}`));
   }
 
+  async socialCheckin(imageUri) {
+    const form = new FormData();
+    form.append('screenshot', {
+      uri: imageUri,
+      name: 'screenshot.jpg',
+      type: 'image/jpeg',
+    });
+    return this.unwrap(
+      await this.client.post('/checkins/social', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
+      })
+    );
+  }
+
   async getPurchaseQr() {
     return this.unwrap(await this.client.get('/purchases/my-qr'));
   }

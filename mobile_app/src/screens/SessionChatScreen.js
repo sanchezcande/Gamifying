@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '../theme/theme';
 
 const WORKOUT_LABELS = {
@@ -34,6 +35,7 @@ function formatMsgTime(dateStr) {
 export default function SessionChatScreen({ route, navigation }) {
   const { session } = route.params;
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -87,12 +89,12 @@ export default function SessionChatScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={8}>
           <Text style={styles.backText}>←</Text>
         </Pressable>
         <View style={{ flex: 1 }}>
@@ -123,7 +125,7 @@ export default function SessionChatScreen({ route, navigation }) {
       )}
 
       {/* Input */}
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TextInput
           style={styles.input}
           placeholder="Message..."
@@ -152,14 +154,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    paddingTop: 56,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 12
   },
-  backBtn: { padding: 4 },
-  backText: { color: colors.primary, fontSize: 22, fontWeight: '700' },
+  backBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
+  backText: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: -1 },
   headerTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
   headerSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
   list: { padding: 16, gap: 8 },
@@ -193,7 +195,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 12,
-    paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     gap: 10

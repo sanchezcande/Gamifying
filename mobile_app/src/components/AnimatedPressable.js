@@ -1,8 +1,17 @@
-import React, { useCallback, useRef } from 'react';
-import { Animated, Platform, Pressable } from 'react-native';
+import React, { useCallback, useMemo, useRef } from 'react';
+import { Animated, Platform, Pressable, StyleSheet } from 'react-native';
 
 let Haptics;
 try { Haptics = require('expo-haptics'); } catch {}
+
+const LAYOUT_KEYS = new Set([
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis',
+  'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight',
+  'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight',
+  'marginHorizontal', 'marginVertical', 'marginStart', 'marginEnd',
+  'alignSelf', 'position', 'top', 'bottom', 'left', 'right',
+  'zIndex',
+]);
 
 export default function AnimatedPressable({
   children,
@@ -14,6 +23,17 @@ export default function AnimatedPressable({
   ...rest
 }) {
   const scale = useRef(new Animated.Value(1)).current;
+
+  const { layoutStyle, contentStyle } = useMemo(() => {
+    const flat = StyleSheet.flatten(style) || {};
+    const layout = {};
+    const content = {};
+    for (const key in flat) {
+      if (LAYOUT_KEYS.has(key)) layout[key] = flat[key];
+      else content[key] = flat[key];
+    }
+    return { layoutStyle: layout, contentStyle: content };
+  }, [style]);
 
   const handlePressIn = useCallback(() => {
     Animated.spring(scale, {
@@ -47,9 +67,9 @@ export default function AnimatedPressable({
   }, [onPress, haptic, disabled]);
 
   return (
-    <Animated.View style={[style, { transform: [{ scale }] }]}>
+    <Animated.View style={[layoutStyle, { transform: [{ scale }] }]}>
       <Pressable
-        style={{ flex: 1 }}
+        style={contentStyle}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}

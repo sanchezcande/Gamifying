@@ -3,6 +3,7 @@ import { Alert, Animated, Easing, Pressable, RefreshControl, ScrollView, Share, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import AnimatedPressable from '../components/AnimatedPressable';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
@@ -127,6 +128,26 @@ export default function HomeScreen({ navigation }) {
   const streak = user?.visitStreak || 0;
   const hasBoosts = (user?.activeSupplements || []).length > 0;
   const isOwner = user?.isOwner;
+  const [socialLoading, setSocialLoading] = useState(false);
+
+  const onSocialCheckin = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.7,
+      });
+      if (result.canceled) return;
+
+      setSocialLoading(true);
+      const res = await apiService.socialCheckin(result.assets[0].uri);
+      await refreshMe();
+      Alert.alert('Shared!', `+${res.data.xpEarned} PWR  +${res.data.gcEarned} GAINS`);
+    } catch (e) {
+      Alert.alert('Social Check-in', e.message);
+    } finally {
+      setSocialLoading(false);
+    }
+  };
 
   return (
     <ScrollView

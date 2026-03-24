@@ -87,6 +87,7 @@ model CheckIn {
   powerGained     Int
   createdAt       DateTime      @default(now())
   method          CheckinMethod @default(QR)
+  imageUrl        String?
   gym             Gym           @relation(fields: [gymId], references: [id])
   user            User          @relation(fields: [userId], references: [id])
 
@@ -287,6 +288,7 @@ enum CompetitionStatus {
 enum CheckinMethod {
   QR
   FACE_ID
+  SOCIAL_MEDIA
 }
 
 enum WorkoutType {

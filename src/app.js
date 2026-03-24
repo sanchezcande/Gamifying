@@ -20,9 +20,12 @@ const sessionRoutes = require('./routes/session.routes');
 const adminRoutes = require('./routes/admin.routes');
 const isGymOwner = require('./middleware/isGymOwner');
 
+const path = require('path');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 app.get('/health', (req, res) => {
   res.json({ success: true, data: { status: 'ok' }, error: null });
