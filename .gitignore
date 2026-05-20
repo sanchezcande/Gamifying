@@ -1,2 +1,19 @@
 node_modules/
 .env
+
+# Expo build output
+mobile_app/dist/
+
+# Test face assets
+mobile_app/src/assets/face/test/
+mobile_app/src/assets/face/test2/
+mobile_app/src/assets/face/test3/
+
+# Coverage
+coverage/
+
+# Expo
+mobile_app/.expo/
+
+# OS files
+.DS_Store
