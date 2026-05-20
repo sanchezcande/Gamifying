@@ -3,7 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
-import LeaderboardScreen from '../screens/LeaderboardScreen';
+import WodScreen from '../screens/WodScreen';
 import BattleScreen from '../screens/BattleScreen';
 import GymBuddyScreen from '../screens/GymBuddyScreen';
 import ShopScreen from '../screens/ShopScreen';
@@ -33,7 +33,6 @@ const tabStyles = StyleSheet.create({
   activeDot: {
     width: 4,
     height: 4,
-    borderRadius: 2,
     marginTop: 3,
   },
 });
@@ -44,28 +43,23 @@ export default function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0D0D0D',
-          borderTopColor: '#1a1a1a',
+          backgroundColor: colors.backgroundDark,
+          borderTopColor: colors.borderDark,
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 88 : 64,
           paddingTop: 6,
-          shadowColor: '#000',
-          shadowRadius: 12,
-          shadowOpacity: 0.5,
-          shadowOffset: { width: 0, height: -4 },
-          elevation: 12,
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: '#444',
+        tabBarActiveTintColor: colors.primaryOnDark,
+        tabBarInactiveTintColor: colors.textOnDarkMuted,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '700',
-          letterSpacing: 0.3,
+          letterSpacing: 0.5,
         },
         tabBarIcon: ({ color, size, focused }) => {
           const nameMap = {
             Home: 'home',
-            Leaderboard: 'trophy',
+            WOD: 'barbell',
             Battle: 'flash',
             GymBuddy: 'people',
             Shop: 'bag',
@@ -76,7 +70,7 @@ export default function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
+      <Tab.Screen name="WOD" component={WodScreen} />
       <Tab.Screen name="Battle" component={BattleScreen} />
       <Tab.Screen name="GymBuddy" component={GymBuddyScreen} />
       <Tab.Screen name="Shop" component={ShopScreen} />

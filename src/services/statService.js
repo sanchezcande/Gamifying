@@ -21,28 +21,24 @@ function getBaseCheckinRewards(nextStreak) {
   return {
     xpEarned: 50,
     gcEarned: 10,
-    muscleGained: 2,
-    enduranceGained: nextStreak >= 3 ? 3 : 1,
-    powerGained: 1
+    muscleGained: 0,
+    enduranceGained: 0,
+    powerGained: nextStreak >= 3 ? 6 : 4
   };
 }
 
 function applyInactivityDecay(user, daysInactive) {
-  let statMuscle = user.statMuscle;
   let statPower = user.statPower;
-  let statEndurance = user.statEndurance;
   let xp = user.xp;
 
   if (daysInactive >= 7) {
-    statMuscle = Math.max(0, statMuscle - 1);
-    statPower = Math.max(0, statPower - 1);
+    statPower = Math.max(0, statPower - 2);
   }
   if (daysInactive >= 14) {
-    statEndurance = Math.max(0, statEndurance - 1);
     xp = Math.max(0, xp - 30);
   }
 
-  return { statMuscle, statPower, statEndurance, xp };
+  return { statMuscle: 0, statPower, statEndurance: 0, xp };
 }
 
 module.exports = {

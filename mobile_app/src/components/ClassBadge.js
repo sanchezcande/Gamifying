@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme/theme';
 
 const classConfig = {
-  ROOKIE:   { color: '#888888', bg: '#1a1a1a', border: '#88888833', icon: 'cloudy-outline' },
-  FIGHTER:  { color: '#22C55E', bg: '#0D2E1A', border: '#22C55E33', icon: 'shield-half' },
-  CHAMPION: { color: '#3B82F6', bg: '#0D1A2E', border: '#3B82F633', icon: 'flash' },
-  WARRIOR:  { color: '#CC0000', bg: '#2b1111', border: '#CC000033', icon: 'flame' },
+  ROOKIE:   { color: '#6B6560', bg: colors.cardLight, border: '#6B656044', icon: 'cloudy-outline' },
+  FIGHTER:  { color: '#22C55E', bg: '#E8F5E9', border: '#22C55E33', icon: 'shield-half' },
+  CHAMPION: { color: '#3B82F6', bg: '#E3F2FD', border: '#3B82F633', icon: 'flash' },
+  WARRIOR:  { color: '#CC0000', bg: '#FBE9E7', border: '#CC000033', icon: 'flame' },
 };
 
 export default function ClassBadge({ avatarClass, showIcon = false }) {
@@ -31,12 +32,8 @@ export default function ClassBadge({ avatarClass, showIcon = false }) {
         {
           backgroundColor: cfg.bg,
           borderColor: cfg.border,
-          borderWidth: 1,
+          borderWidth: 1.5,
           transform: [{ scale: pulse }],
-          shadowColor: cfg.color,
-          shadowRadius: 6,
-          shadowOpacity: 0.4,
-          shadowOffset: { width: 0, height: 0 },
         },
       ]}
     >
@@ -53,12 +50,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderRadius: 999,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   label: {
     fontWeight: '800',
     fontSize: 11,
+    letterSpacing: 0.5,
   },
 });

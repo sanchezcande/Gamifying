@@ -12,13 +12,14 @@ async function main() {
   await prisma.userItem.deleteMany();
   await prisma.shopItem.deleteMany();
   await prisma.competition.deleteMany();
+  await prisma.gymSession.deleteMany();
   await prisma.gym.deleteMany();
   await prisma.user.deleteMany();
 
   const gym = await prisma.gym.create({
     data: {
-      name: 'Obsidian Gym',
-      location: 'Canggu Bali',
+      name: 'Demo Gym',
+      location: 'Madrid',
       gymCode: '4821'
     }
   });
@@ -46,15 +47,15 @@ async function main() {
         email: 'carlos@gamifying.app',
         password,
         gymId: gym.id,
-        isOwner: true,
+        isOwner: false,
         xp: 3400,
         currentMonthXp: 600,
         gymCoins: 1200,
         avatarClass: 'WARRIOR',
         avatarBodyStage: 5,
-        statMuscle: 110,
-        statEndurance: 80,
-        statPower: 90,
+        statMuscle: 0,
+        statEndurance: 0,
+        statPower: 280,
         visitStreak: 12,
         lastVisitDate: new Date(),
         ...baseFace
@@ -71,9 +72,9 @@ async function main() {
         gymCoins: 800,
         avatarClass: 'CHAMPION',
         avatarBodyStage: 4,
-        statMuscle: 70,
-        statEndurance: 45,
-        statPower: 50,
+        statMuscle: 0,
+        statEndurance: 0,
+        statPower: 165,
         visitStreak: 8,
         lastVisitDate: new Date(Date.now() - 86400000),
         ...baseFace,
@@ -91,9 +92,9 @@ async function main() {
         gymCoins: 750,
         avatarClass: 'CHAMPION',
         avatarBodyStage: 3,
-        statMuscle: 50,
-        statEndurance: 40,
-        statPower: 35,
+        statMuscle: 0,
+        statEndurance: 0,
+        statPower: 125,
         visitStreak: 5,
         lastVisitDate: new Date(Date.now() - 2 * 86400000),
         avatarGender: 'FEMALE',
@@ -120,9 +121,9 @@ async function main() {
         gymCoins: 400,
         avatarClass: 'FIGHTER',
         avatarBodyStage: 2,
-        statMuscle: 25,
-        statEndurance: 20,
-        statPower: 18,
+        statMuscle: 0,
+        statEndurance: 0,
+        statPower: 63,
         visitStreak: 3,
         lastVisitDate: new Date(Date.now() - 3 * 86400000),
         ...baseFace,
@@ -140,9 +141,9 @@ async function main() {
         gymCoins: 150,
         avatarClass: 'ROOKIE',
         avatarBodyStage: 1,
-        statMuscle: 8,
-        statEndurance: 7,
-        statPower: 6,
+        statMuscle: 0,
+        statEndurance: 0,
+        statPower: 21,
         visitStreak: 1,
         lastVisitDate: new Date(Date.now() - 4 * 86400000),
         avatarGender: 'FEMALE',
@@ -310,9 +311,9 @@ async function main() {
       gymId: gym.id,
       xpEarned: 50,
       gcEarned: 10,
-      muscleGained: 2,
-      enduranceGained: 1,
-      powerGained: 1,
+      muscleGained: 0,
+      enduranceGained: 0,
+      powerGained: 4,
       createdAt: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000)
     });
   }
@@ -378,15 +379,77 @@ async function main() {
     }
   });
 
-  const sevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await prisma.userItem.createMany({
-    data: [
-      { userId: users[0].id, shopItemId: items[0].id, isActive: true, expiresAt: sevenDays },
-      { userId: users[0].id, shopItemId: items[5].id, isActive: true, isEquipped: true },
-      { userId: users[0].id, shopItemId: items[6].id, isActive: true, isEquipped: true },
-      { userId: users[0].id, shopItemId: items[7].id, isActive: true, isEquipped: true }
-    ]
+  // Carlos starts clean — no items, no supplements (for demo purposes)
+
+  // ── WOD seed data ──────────────────────────────────────────────────────────
+  // Clean WOD tables
+  await prisma.wodResult.deleteMany();
+  await prisma.wodExercise.deleteMany();
+  await prisma.wod.deleteMany();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Today's WOD
+  const todayWod = await prisma.wod.create({
+    data: {
+      gymId: gym.id,
+      name: 'HEAVY FRIDAY',
+      description: 'Fuerza maxima - registra el peso maximo por ejercicio',
+      date: today,
+      scoreType: 'WEIGHT',
+    },
   });
+
+  const todayExercises = await Promise.all([
+    prisma.wodExercise.create({ data: { wodId: todayWod.id, name: 'Back Squat', targetReps: '5x5', order: 1 } }),
+    prisma.wodExercise.create({ data: { wodId: todayWod.id, name: 'Deadlift', targetReps: '3x3', order: 2 } }),
+    prisma.wodExercise.create({ data: { wodId: todayWod.id, name: 'Bench Press', targetReps: '5x5', order: 3 } }),
+  ]);
+
+  // Results for today (Marcos and Ayu already submitted - Carlos, Dimas, Sofia haven't)
+  await prisma.wodResult.createMany({
+    data: [
+      { wodId: todayWod.id, exerciseId: todayExercises[0].id, userId: users[1].id, value: 100 },
+      { wodId: todayWod.id, exerciseId: todayExercises[1].id, userId: users[1].id, value: 160 },
+      { wodId: todayWod.id, exerciseId: todayExercises[2].id, userId: users[1].id, value: 90 },
+      { wodId: todayWod.id, exerciseId: todayExercises[0].id, userId: users[2].id, value: 60 },
+      { wodId: todayWod.id, exerciseId: todayExercises[1].id, userId: users[2].id, value: 80 },
+      { wodId: todayWod.id, exerciseId: todayExercises[2].id, userId: users[2].id, value: 50 },
+    ],
+  });
+
+  // Past WODs for monthly ranking
+  const pastWodData = [
+    { name: 'METCON MADNESS', desc: 'AMRAP 15 min', scoreType: 'REPS', daysAgo: 1 },
+    { name: 'OLYMPIC DAY', desc: 'Clean & Jerk + Snatch', scoreType: 'WEIGHT', daysAgo: 2 },
+    { name: 'GRINDER', desc: 'For time - 5 rounds', scoreType: 'TIME', daysAgo: 3 },
+    { name: 'POWER HOUR', desc: 'Max effort lifts', scoreType: 'WEIGHT', daysAgo: 5 },
+  ];
+
+  for (const pw of pastWodData) {
+    const pastDate = new Date(today);
+    pastDate.setDate(pastDate.getDate() - pw.daysAgo);
+
+    const pastWod = await prisma.wod.create({
+      data: { gymId: gym.id, name: pw.name, description: pw.desc, date: pastDate, scoreType: pw.scoreType },
+    });
+
+    const pastEx = await prisma.wodExercise.create({
+      data: { wodId: pastWod.id, name: 'Score', targetReps: pw.scoreType === 'TIME' ? 'mins' : 'total', order: 1 },
+    });
+
+    // Vary winners: Carlos wins most, Marcos wins some, others participate
+    const scores = pw.scoreType === 'TIME'
+      ? [{ u: 0, v: 480 }, { u: 1, v: 510 }, { u: 2, v: 600 }, { u: 3, v: 650 }]
+      : pw.daysAgo === 1
+        ? [{ u: 1, v: 210 }, { u: 0, v: 195 }, { u: 2, v: 150 }, { u: 3, v: 120 }]
+        : [{ u: 0, v: 280 }, { u: 1, v: 250 }, { u: 2, v: 180 }, { u: 3, v: 140 }];
+
+    await prisma.wodResult.createMany({
+      data: scores.map((s) => ({ wodId: pastWod.id, exerciseId: pastEx.id, userId: users[s.u].id, value: s.v })),
+    });
+  }
 
   console.log('Seed completed successfully.');
 }

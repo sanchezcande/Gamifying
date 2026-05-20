@@ -17,6 +17,8 @@ const leaderboardRoutes = require('./routes/leaderboard.routes');
 const competitionRoutes = require('./routes/competition.routes');
 const gymRoutes = require('./routes/gym.routes');
 const sessionRoutes = require('./routes/session.routes');
+const feedbackRoutes = require('./routes/feedback.routes');
+const wodRoutes = require('./routes/wod.routes');
 const adminRoutes = require('./routes/admin.routes');
 const isGymOwner = require('./middleware/isGymOwner');
 
@@ -46,6 +48,8 @@ app.use('/api/leaderboard', auth, avatarCreated, leaderboardRoutes);
 app.use('/api/competitions', auth, avatarCreated, competitionRoutes);
 app.use('/api/gyms', auth, gymRoutes);
 app.use('/api/sessions', auth, avatarCreated, sessionRoutes);
+app.use('/api/feedback', auth, feedbackRoutes);
+app.use('/api/wods', auth, avatarCreated, wodRoutes);
 app.use('/api/admin', auth, isGymOwner, adminRoutes);
 
 app.use((req, res) => {

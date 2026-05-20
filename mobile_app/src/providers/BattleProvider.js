@@ -9,11 +9,11 @@ export function BattleProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const challenge = async (defenderId) => {
+  const challenge = async (defenderId, moves) => {
     try {
       setLoading(true);
       setError(null);
-      const result = await apiService.challenge(defenderId);
+      const result = await apiService.challenge(defenderId, moves);
       setBattleResult(result.data);
       return result.data;
     } catch (e) {

@@ -6,7 +6,7 @@ try { Haptics = require('expo-haptics'); } catch {}
 
 const LAYOUT_KEYS = new Set([
   'flex', 'flexGrow', 'flexShrink', 'flexBasis',
-  'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight',
+  'minWidth', 'minHeight', 'maxWidth', 'maxHeight',
   'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight',
   'marginHorizontal', 'marginVertical', 'marginStart', 'marginEnd',
   'alignSelf', 'position', 'top', 'bottom', 'left', 'right',

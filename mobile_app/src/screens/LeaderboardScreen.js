@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../providers/AuthProvider';
@@ -9,7 +8,7 @@ import apiService from '../services/apiService';
 import LoadingScreen from '../components/LoadingScreen';
 import AvatarCircle from '../components/AvatarCircle';
 import ClassBadge from '../components/ClassBadge';
-import { colors, radius } from '../theme/theme';
+import { colors, fonts, radius } from '../theme/theme';
 import { currentMonthLabel } from '../utils/month';
 
 // ── Thin XP bar ─────────────────────────────────────────────────────────────
@@ -33,7 +32,7 @@ function XPStrip({ current, next, color = colors.primary }) {
   );
 }
 const strip = StyleSheet.create({
-  track: { height: 3, backgroundColor: '#222', borderRadius: 99, overflow: 'hidden', marginTop: 5 },
+  track: { height: 3, backgroundColor: colors.border, borderRadius: 99, overflow: 'hidden', marginTop: 5 },
   fill:  { height: 3, borderRadius: 99, width: '100%', transformOrigin: 'left center' },
 });
 
@@ -55,7 +54,7 @@ function ChampionshipZone({ first, second }) {
   return (
     <View style={cz.outer}>
       <Animated.View style={[cz.glowBorder, { opacity: glowAnim }]} />
-      <LinearGradient colors={['#1a0a00', '#120000', '#0A0A0A']} style={cz.wrap}>
+      <View style={cz.wrap}>
         <View style={cz.labelRow}>
           <View style={cz.line} />
           <Ionicons name="trophy" size={12} color="#CC4400" />
@@ -95,7 +94,7 @@ function ChampionshipZone({ first, second }) {
             {second && <ClassBadge avatarClass={second.avatarClass} showIcon />}
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -104,31 +103,28 @@ const cz = StyleSheet.create({
   outer: { position: 'relative', marginBottom: 20 },
   glowBorder: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.cardLarge + 2,
+    borderRadius: radius.card + 2,
     borderWidth: 2,
-    borderColor: '#CC4400',
-    shadowColor: '#CC4400',
-    shadowRadius: 16,
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 0 },
+    borderColor: colors.accent,
   },
   wrap: {
-    borderRadius: radius.cardLarge,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: '#3a1500',
+    borderColor: colors.border,
+    backgroundColor: colors.cardLight,
     padding: 18,
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  line:     { flex: 1, height: 1, backgroundColor: '#3a1500' },
-  label:    { color: '#CC4400', fontWeight: '900', fontSize: 10, letterSpacing: 1.5, textAlign: 'center' },
-  sublabel: { color: '#664422', fontSize: 11, textAlign: 'center', marginBottom: 18, fontWeight: '600' },
+  line:     { flex: 1, height: 1, backgroundColor: colors.border },
+  label:    { color: colors.accent, fontWeight: '900', fontSize: 10, letterSpacing: 1.5, textAlign: 'center' },
+  sublabel: { color: colors.textSecondary, fontSize: 11, textAlign: 'center', marginBottom: 18, fontWeight: '600' },
   fighters: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   side:     { flex: 1, alignItems: 'center', gap: 5 },
   medalCircle: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   medalNum: { fontWeight: '900', fontSize: 13 },
-  fighterName: { color: '#fff', fontWeight: '800', fontSize: 13, textAlign: 'center' },
+  fighterName: { color: colors.textPrimary, fontWeight: '800', fontSize: 13, textAlign: 'center' },
   pwr:      { fontWeight: '900', fontSize: 17 },
-  pwrUnit:  { color: '#555', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginTop: -4 },
+  pwrUnit:  { color: colors.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginTop: -4 },
   vsCol:    { alignItems: 'center', gap: 6, paddingHorizontal: 10 },
   vs: {
     color: colors.primary, fontWeight: '900', fontSize: 22, letterSpacing: 2,
@@ -185,8 +181,8 @@ function EntryRow({ entry, idx, isCurrent, delay = 0 }) {
 const row = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#111', borderRadius: 16,
-    borderWidth: 1, borderColor: '#1a1a1a',
+    backgroundColor: colors.cardLight, borderRadius: radius.card,
+    borderWidth: 1, borderColor: colors.border,
     borderLeftWidth: 1, borderLeftColor: 'transparent',
     paddingVertical: 12, paddingHorizontal: 14,
     marginBottom: 8, gap: 12,
@@ -195,14 +191,14 @@ const row = StyleSheet.create({
   rankWrap: { width: 26, alignItems: 'center' },
   medalCircle: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   medalNum: { fontWeight: '900', fontSize: 12 },
-  rankNum:  { color: '#555', fontWeight: '800', fontSize: 15 },
+  rankNum:  { color: colors.textMuted, fontWeight: '800', fontSize: 15 },
   info:     { flex: 1, minWidth: 0 },
-  name:     { color: '#fff', fontWeight: '700', fontSize: 14, marginBottom: 4 },
+  name:     { color: colors.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 4 },
   metaRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   streak:   { color: colors.textSecondary, fontSize: 12 },
   xpWrap:   { alignItems: 'flex-end', minWidth: 52 },
   xpVal:    { color: colors.primary, fontWeight: '800', fontSize: 15 },
-  xpUnit:   { color: '#555', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  xpUnit:   { color: colors.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
 });
 
 // ── Screen ───────────────────────────────────────────────────────────────────
@@ -232,11 +228,11 @@ export default function LeaderboardScreen() {
   return (
     <View style={s.screen}>
       {/* Header */}
-      <LinearGradient colors={['#1a0003', '#0d0001', '#0A0A0A']} style={[s.header, { paddingTop: insets.top + 14 }]}>
+      <View style={[s.header, { paddingTop: insets.top + 14 }]}>
         <Text style={s.monthLabel}>{currentMonthLabel()}</Text>
         <Text style={s.title}>RANKING</Text>
         {gymName ? <Text style={s.gymName}>{gymName}</Text> : null}
-      </LinearGradient>
+      </View>
 
       <ScrollView
         contentContainerStyle={[s.list, { paddingBottom: BANNER_H + insets.bottom + 16 }]}
@@ -265,18 +261,18 @@ export default function LeaderboardScreen() {
 
       {/* Prize banner */}
       <View style={[s.bannerOuter, { paddingBottom: insets.bottom + 10 }]}>
-        <LinearGradient colors={['#1a0005', '#120002', '#0e0001']} style={s.banner}>
+        <View style={s.banner}>
           <View style={s.bannerAccent} />
           <View style={s.bannerContent}>
-            <Ionicons name="gift" size={20} color={colors.primary} />
+            <Ionicons name="gift" size={20} color={colors.accent} />
             <View style={s.bannerTextCol}>
               <Text style={s.bannerTitle}>MONTHLY PRIZE</Text>
               <Text style={s.bannerDesc}>Meal + Drink + ON Whey</Text>
             </View>
-            <Ionicons name="trophy" size={20} color="#D4AF37" />
+            <Ionicons name="trophy" size={20} color={colors.gold} />
           </View>
           <View style={s.bannerAccentBottom} />
-        </LinearGradient>
+        </View>
       </View>
     </View>
   );
@@ -284,30 +280,31 @@ export default function LeaderboardScreen() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 20, paddingBottom: 20 },
-  monthLabel: { color: colors.primary, fontWeight: '900', fontSize: 11, letterSpacing: 3, textTransform: 'uppercase' },
-  title:  { color: '#fff', fontSize: 28, fontWeight: '900', letterSpacing: 1, lineHeight: 30 },
-  gymName: { color: '#444', fontSize: 12, marginTop: 4, fontWeight: '600' },
+  header: { paddingHorizontal: 20, paddingBottom: 20, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
+  monthLabel: { color: colors.accent, fontWeight: '900', fontSize: 11, letterSpacing: 3, textTransform: 'uppercase' },
+  title:  { color: colors.textPrimary, fontSize: 28, fontFamily: fonts.heading, letterSpacing: 1, lineHeight: 30 },
+  gymName: { color: colors.textSecondary, fontSize: 12, marginTop: 4, fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingTop: 4 },
   dividerRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#1E1E1E' },
-  dividerLabel: { color: '#333', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '900', letterSpacing: 2 },
   bannerOuter: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     alignItems: 'center', paddingHorizontal: 20, paddingTop: 8,
   },
   banner: {
-    width: '100%', borderRadius: 14,
-    borderWidth: 1.5, borderColor: colors.primary + '44',
+    width: '100%', borderRadius: radius.card,
+    borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.cardLight,
     overflow: 'hidden',
   },
-  bannerAccent: { height: 2, backgroundColor: colors.primary, opacity: 0.6 },
-  bannerAccentBottom: { height: 2, backgroundColor: colors.primary, opacity: 0.6 },
+  bannerAccent: { height: 2, backgroundColor: colors.accent, opacity: 0.6 },
+  bannerAccentBottom: { height: 2, backgroundColor: colors.accent, opacity: 0.6 },
   bannerContent: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, paddingHorizontal: 16, gap: 12,
   },
   bannerTextCol: { alignItems: 'center' },
-  bannerTitle: { color: colors.primary, fontWeight: '900', fontSize: 11, letterSpacing: 2 },
-  bannerDesc: { color: '#fff', fontWeight: '800', fontSize: 14, letterSpacing: 0.3, marginTop: 2 },
+  bannerTitle: { color: colors.accent, fontWeight: '900', fontSize: 11, letterSpacing: 2 },
+  bannerDesc: { color: colors.textPrimary, fontWeight: '800', fontSize: 14, letterSpacing: 0.3, marginTop: 2 },
 });

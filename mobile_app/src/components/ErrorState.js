@@ -24,5 +24,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radius.button
   },
-  btnText: { color: '#fff', fontWeight: '700' }
+  btnText: { color: colors.primaryOnDark, fontWeight: '700' }
 });

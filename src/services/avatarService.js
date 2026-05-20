@@ -9,11 +9,11 @@ function getBodyStage(totalStats) {
 }
 
 function getCompetitionScore(user) {
-  return user.statMuscle * 0.4 + user.statEndurance * 0.35 + user.statPower * 0.25;
+  return user.statPower || 0;
 }
 
 function getAvatarProgress(user) {
-  const totalStats = user.statMuscle + user.statEndurance + user.statPower;
+  const totalStats = user.statPower || 0;
   return {
     avatarClass: getAvatarClass(user.xp),
     avatarBodyStage: getBodyStage(totalStats)

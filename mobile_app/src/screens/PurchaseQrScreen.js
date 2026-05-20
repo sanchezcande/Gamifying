@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
-import { colors } from '../theme/theme';
+import { colors, fonts, radius } from '../theme/theme';
 
 const QR_REFRESH_MS = 4 * 60 * 1000; // Refresh every 4 min (token lasts 5)
 
@@ -50,7 +50,7 @@ export default function PurchaseQrScreen({ navigation }) {
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
       <View style={styles.topBar}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.title}>Purchase QR</Text>
         <View style={{ width: 36 }} />
@@ -102,31 +102,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, marginBottom: 20,
   },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' },
-  title: { color: '#fff', fontSize: 17, fontWeight: '800', letterSpacing: 0.5 },
+  backBtn: { width: 36, height: 36, borderRadius: radius.card, backgroundColor: colors.cardLight, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
+  title: { color: colors.textPrimary, fontSize: 17, fontFamily: fonts.heading, letterSpacing: 0.5 },
 
   content: { flex: 1, alignItems: 'center', paddingHorizontal: 24 },
 
-  userName: { color: '#fff', fontSize: 22, fontWeight: '900', marginBottom: 4 },
-  subtitle: { color: '#888', fontSize: 14, fontWeight: '600', marginBottom: 28 },
+  userName: { color: colors.textPrimary, fontSize: 22, fontFamily: fonts.heading, marginBottom: 4 },
+  subtitle: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', marginBottom: 28 },
 
   qrWrapper: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 24,
-    shadowColor: colors.primary, shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15, shadowRadius: 20, elevation: 8,
+    backgroundColor: '#fff', borderRadius: radius.card, padding: 24,
+    borderWidth: 1, borderColor: colors.border,
   },
   qrPlaceholder: { width: 220, height: 220, justifyContent: 'center', alignItems: 'center' },
-  qrPlaceholderText: { color: '#888', fontSize: 14 },
+  qrPlaceholderText: { color: colors.textSecondary, fontSize: 14 },
 
   timerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20 },
-  timerText: { color: '#888', fontSize: 13, fontWeight: '600' },
+  timerText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
 
   refreshBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginTop: 16, paddingVertical: 10, paddingHorizontal: 18,
-    borderRadius: 10, borderWidth: 1, borderColor: colors.primary + '33',
+    borderRadius: radius.button, borderWidth: 1, borderColor: colors.border,
   },
-  refreshText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
+  refreshText: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
 
-  info: { color: '#555', fontSize: 12, textAlign: 'center', marginTop: 28, lineHeight: 18, paddingHorizontal: 20 },
+  info: { color: colors.textMuted, fontSize: 12, textAlign: 'center', marginTop: 28, lineHeight: 18, paddingHorizontal: 20 },
 });

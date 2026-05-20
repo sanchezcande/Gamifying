@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Modal, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AnimatedPressable from '../components/AnimatedPressable';
 import { useAuth } from '../providers/AuthProvider';
@@ -12,34 +11,58 @@ import AvatarSprite from '../components/AvatarSprite';
 import ClassBadge from '../components/ClassBadge';
 import XPBar from '../components/XPBar';
 import LoadingScreen from '../components/LoadingScreen';
-import { colors, radius } from '../theme/theme';
+import { colors, fonts, radius } from '../theme/theme';
 import { nextClassThreshold, timeLeftLabel } from '../utils/avatar';
 import { faceOptionsFromUser } from '../utils/faceLabels';
 
-// ── Animated Stat Pill ──────────────────────────────────────────────────────
-function StatPill({ iconName, value, label, color, delay = 0 }) {
+// ── Animated Power Card ─────────────────────────────────────────────────────
+function StatsRow({ power, gains }) {
   const slideUp = useRef(new Animated.Value(20)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(slideUp, { toValue: 0, duration: 400, delay, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
+      Animated.timing(slideUp, { toValue: 0, duration: 400, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
   }, []);
 
   return (
-    <Animated.View style={[sp.wrap, { borderColor: color + '33', transform: [{ translateY: slideUp }], opacity }]}>
-      <Ionicons name={iconName} size={20} color={color} />
-      <Text style={[sp.value, { color }]}>{value}</Text>
-      <Text style={sp.label}>{label}</Text>
+    <Animated.View style={[sp.row, { transform: [{ translateY: slideUp }], opacity }]}>
+      <View style={[sp.card, { borderColor: colors.power + '30' }]}>
+        <View style={[sp.iconCircle, { backgroundColor: colors.power + '15' }]}>
+          <Ionicons name="flash" size={18} color={colors.power} />
+        </View>
+        <View>
+          <Text style={sp.label}>POWER</Text>
+          <Text style={[sp.value, { color: colors.power }]}>{power}</Text>
+        </View>
+      </View>
+      <View style={[sp.card, { borderColor: colors.gold + '30' }]}>
+        <View style={[sp.iconCircle, { backgroundColor: colors.gold + '15' }]}>
+          <Ionicons name="diamond" size={16} color={colors.gold} />
+        </View>
+        <View>
+          <Text style={sp.label}>GAINS</Text>
+          <Text style={[sp.value, { color: colors.gold }]}>{gains}</Text>
+        </View>
+      </View>
     </Animated.View>
   );
 }
 const sp = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: '#111', borderRadius: 14, borderWidth: 1, padding: 14, alignItems: 'center', gap: 2 },
+  row: { flexDirection: 'row', gap: 10 },
+  card: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.cardLight, borderRadius: radius.card,
+    borderWidth: 1, padding: 12,
+  },
+  iconCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+  },
   value: { fontWeight: '900', fontSize: 22 },
-  label: { color: '#555', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label: { color: colors.textMuted, fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 },
 });
 
 // ── Body Stage Progress ─────────────────────────────────────────────────────
@@ -66,14 +89,14 @@ function BodyStageBar({ currentStage }) {
 }
 const bs = StyleSheet.create({
   row:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 10 },
-  line:           { flex: 1, height: 2, backgroundColor: '#222', marginHorizontal: -1 },
+  line:           { flex: 1, height: 2, backgroundColor: colors.border, marginHorizontal: -1 },
   lineActive:     { backgroundColor: colors.primary + '66' },
-  dot:            { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1A1A1A', borderWidth: 2, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
+  dot:            { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.cardLight, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   dotPast:        { backgroundColor: colors.primary + '15', borderColor: colors.primary + '55' },
-  dotCurrent:     { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary + '33', borderColor: colors.primary, borderWidth: 2.5, shadowColor: colors.primary, shadowRadius: 8, shadowOpacity: 0.5, shadowOffset: { width: 0, height: 0 } },
-  dotText:        { color: '#444', fontWeight: '800', fontSize: 12 },
+  dotCurrent:     { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary + '33', borderColor: colors.primary, borderWidth: 2.5 },
+  dotText:        { color: colors.textMuted, fontWeight: '800', fontSize: 12 },
   dotTextPast:    { color: colors.primary + '88' },
-  dotTextCurrent: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  dotTextCurrent: { color: colors.textPrimary, fontWeight: '900', fontSize: 14 },
 });
 
 function nextClassName(current) {
@@ -100,7 +123,7 @@ export default function ProfileScreen({ navigation }) {
 
   const nextXp = useMemo(() => nextClassThreshold(user?.avatarClass), [user?.avatarClass]);
   const nextClass = nextClassName(user?.avatarClass);
-  const totalStats = (user?.statMuscle || 0) + (user?.statPower || 0) + (user?.statEndurance || 0);
+  const totalStats = user?.statPower || 0;
   const bodyStage = user?.avatarBodyStage || 1;
 
   const onShare = async () => {
@@ -114,7 +137,7 @@ export default function ProfileScreen({ navigation }) {
       <Animated.View style={{ opacity: fadeIn }}>
 
         {/* ── Hero ── */}
-        <LinearGradient colors={['#180003', '#0F0001', '#0A0A0A']} style={[styles.hero, { paddingTop: insets.top + 10 }]}>
+        <View style={[styles.hero, { paddingTop: insets.top + 10 }]}>
           <AnimatedPressable style={styles.photoWrap} onPress={() => setShowFullBody(true)} haptic="light" scaleDown={0.96}>
             <AvatarCircle
               name={user?.name}
@@ -137,7 +160,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.heroDate}>
             Member since {new Date(user?.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
           </Text>
-        </LinearGradient>
+        </View>
 
         <View style={styles.body}>
 
@@ -156,12 +179,8 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.editAvatarText}>Edit Avatar</Text>
           </AnimatedPressable>
 
-          {/* ── Stats ── */}
-          <View style={styles.statsRow}>
-            <StatPill iconName="barbell" value={user?.statMuscle || 0}    label="Muscle"    color="#FF6B35" delay={0} />
-            <StatPill iconName="flash" value={user?.statPower || 0}     label="Power"     color="#3B82F6" delay={100} />
-            <StatPill iconName="shield" value={user?.statEndurance || 0} label="Endurance" color="#22C55E" delay={200} />
-          </View>
+          {/* ── Power + Gains ── */}
+          <StatsRow power={user?.statPower || 0} gains={user?.gymCoins || 0} />
 
           {/* ── Class Progression ── */}
           <View style={styles.sectionCard}>
@@ -188,9 +207,9 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>BODY STAGE</Text>
             <BodyStageBar currentStage={bodyStage} />
-            <Text style={styles.muted}>Stage {bodyStage} · {totalStats} total stats</Text>
+            <Text style={styles.muted}>Stage {bodyStage} · {totalStats} Power</Text>
             {bodyStage < 5 && (
-              <Text style={styles.muted}>Next stage at {STAGE_THRESHOLDS[bodyStage] || '???'} total stats</Text>
+              <Text style={styles.muted}>Next stage at {STAGE_THRESHOLDS[bodyStage] || '???'} Power</Text>
             )}
           </View>
 
@@ -203,7 +222,7 @@ export default function ProfileScreen({ navigation }) {
                 const iconMap = { OUTFIT: 'shirt-outline', PANTS: 'resize-outline', SHOES: 'footsteps-outline', ACCESSORY: 'watch-outline' };
                 return (
                   <View key={category} style={styles.cosmeticSlot}>
-                    <Ionicons name={iconMap[category]} size={18} color="#888" />
+                    <Ionicons name={iconMap[category]} size={18} color={colors.textSecondary} />
                     <Text style={styles.cosmeticName}>{found?.shopItem?.name || 'Empty'}</Text>
                   </View>
                 );
@@ -226,12 +245,28 @@ export default function ProfileScreen({ navigation }) {
             )}
           </View>
 
+          {/* ── View Feedback (owner only) ── */}
+          {user?.isOwner && (
+            <AnimatedPressable
+              style={styles.feedbackBtn}
+              onPress={() => navigation.navigate('FeedbackList')}
+              haptic="light"
+              scaleDown={0.97}
+            >
+              <Ionicons name="chatbubble-ellipses" size={16} color={colors.textSecondary} />
+              <Text style={styles.feedbackBtnText}>View Feedback</Text>
+              <View style={styles.feedbackBadge}>
+                <Text style={styles.feedbackBadgeText}>OWNER</Text>
+              </View>
+            </AnimatedPressable>
+          )}
+
           {/* ── Share / Logout ── */}
           <View style={styles.actionRow}>
             <AnimatedPressable style={styles.shareBtn} onPress={onShare} haptic="medium" scaleDown={0.96}>
-              <LinearGradient colors={['#E00', '#900']} style={styles.shareBtnGrad}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Ionicons name="share-social" size={16} color="#fff" /><Text style={styles.shareText}>Share referral</Text></View>
-              </LinearGradient>
+              <View style={styles.shareBtnGrad}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Ionicons name="share-social" size={16} color={colors.primaryOnDark} /><Text style={styles.shareText}>Share referral</Text></View>
+              </View>
             </AnimatedPressable>
             <AnimatedPressable style={styles.logoutBtn} onPress={logout} haptic="light" scaleDown={0.96}>
               <Text style={styles.logoutText}>Log out</Text>
@@ -259,16 +294,16 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
 
-  hero: { paddingHorizontal: 20, paddingBottom: 22 },
-  heroName: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 10 },
+  hero: { paddingHorizontal: 20, paddingBottom: 22, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
+  heroName: { color: colors.textPrimary, fontSize: 22, fontFamily: fonts.heading, marginTop: 10 },
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  heroDot: { color: '#444' },
+  heroDot: { color: colors.textMuted },
   heroStage: { color: colors.textSecondary, fontWeight: '700' },
-  heroGym: { color: '#666', marginTop: 6 },
-  heroDate: { color: '#444', fontSize: 12, marginTop: 4 },
+  heroGym: { color: colors.textSecondary, marginTop: 6 },
+  heroDate: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
 
   photoWrap: { alignItems: 'center' },
-  tapHint: { color: '#666', fontSize: 11, marginTop: 8 },
+  tapHint: { color: colors.textMuted, fontSize: 11, marginTop: 8 },
 
   body: { paddingHorizontal: 16, paddingTop: 16, gap: 14 },
 
@@ -276,76 +311,89 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#111',
+    backgroundColor: colors.cardLight,
     borderWidth: 1,
-    borderColor: colors.primary + '33',
-    borderRadius: 14,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  editAvatarText: { color: '#fff', fontWeight: '700' },
-
-  statsRow: { flexDirection: 'row', gap: 10 },
+  editAvatarText: { color: colors.textPrimary, fontWeight: '700' },
 
   sectionCard: {
-    backgroundColor: '#111',
+    backgroundColor: colors.cardLight,
     borderWidth: 1,
-    borderColor: '#1a1a1a',
-    borderRadius: 16,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     padding: 16,
   },
   sectionTitle: { color: colors.primary, fontWeight: '800', fontSize: 11, letterSpacing: 1.5, marginBottom: 10 },
   classRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  classArrow: { color: '#666', fontWeight: '800' },
-  classNext: { color: '#fff', fontWeight: '800' },
-  classXpText: { color: '#666', fontSize: 12, marginTop: 6 },
+  classArrow: { color: colors.textMuted, fontWeight: '800' },
+  classNext: { color: colors.textPrimary, fontWeight: '800' },
+  classXpText: { color: colors.textSecondary, fontSize: 12, marginTop: 6 },
   maxRankRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  maxRankText: { color: '#fff', fontWeight: '800' },
+  maxRankText: { color: colors.textPrimary, fontWeight: '800' },
 
-  muted: { color: '#666', fontSize: 12 },
+  muted: { color: colors.textSecondary, fontSize: 12 },
 
   cosmeticsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cosmeticSlot: {
     width: '47%',
-    backgroundColor: '#0c0c0c',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#1a1a1a',
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     padding: 12,
     gap: 6,
   },
-  cosmeticName: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  cosmeticName: { color: colors.textPrimary, fontWeight: '700', fontSize: 12 },
 
   suppRow: {
-    backgroundColor: '#0c0c0c',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#1a1a1a',
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: radius.card,
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 12,
     marginBottom: 6,
   },
-  suppName: { color: '#fff', fontWeight: '600' },
+  suppName: { color: colors.textPrimary, fontWeight: '600' },
   suppTime: { color: colors.primary, fontWeight: '700' },
 
-  actionRow: { flexDirection: 'row', gap: 10 },
-  shareBtn: { flex: 1, borderRadius: 14, overflow: 'hidden' },
-  shareBtnGrad: { paddingVertical: 14, alignItems: 'center' },
-  shareText: { color: '#fff', fontWeight: '800' },
-  logoutBtn: {
-    flex: 1, borderWidth: 1, borderColor: '#222',
-    borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-    backgroundColor: '#111',
+  feedbackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cardLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
-  logoutText: { color: '#888', fontWeight: '700' },
+  feedbackBtnText: { color: colors.textPrimary, fontWeight: '700', flex: 1 },
+  feedbackBadge: { backgroundColor: colors.textMuted + '18', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  feedbackBadgeText: { color: colors.textMuted, fontSize: 9, fontWeight: '800', letterSpacing: 1 },
 
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  actionRow: { flexDirection: 'row', gap: 10 },
+  shareBtn: { flex: 1, borderRadius: radius.button, overflow: 'hidden' },
+  shareBtnGrad: { paddingVertical: 14, alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.button },
+  shareText: { color: colors.primaryOnDark, fontWeight: '800' },
+  logoutBtn: {
+    flex: 1, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radius.button, paddingVertical: 14, alignItems: 'center',
+    backgroundColor: colors.cardLight,
+  },
+  logoutText: { color: colors.textSecondary, fontWeight: '700' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   modalCard: {
-    backgroundColor: '#0c0c0c', borderRadius: 20, borderWidth: 1, borderColor: '#1a1a1a',
+    backgroundColor: colors.background, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border,
     padding: 24, alignItems: 'center', gap: 8,
   },
-  modalName: { color: '#fff', fontWeight: '800', fontSize: 18, marginTop: 8 },
+  modalName: { color: colors.textPrimary, fontWeight: '800', fontSize: 18, marginTop: 8 },
   modalStage: { color: colors.textSecondary },
-  modalHint: { color: '#555', fontSize: 11, marginTop: 4 },
+  modalHint: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
 });

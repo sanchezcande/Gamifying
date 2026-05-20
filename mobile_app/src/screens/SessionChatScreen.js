@@ -12,7 +12,7 @@ import {
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius } from '../theme/theme';
+import { colors, fonts, radius } from '../theme/theme';
 
 const WORKOUT_LABELS = {
   WEIGHTS: 'Weights',
@@ -160,36 +160,36 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: 12
   },
-  backBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
-  backText: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: -1 },
-  headerTitle: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  backBtn: { width: 34, height: 34, borderRadius: radius.card, backgroundColor: colors.cardLight, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', marginTop: -1 },
+  headerTitle: { color: colors.textPrimary, fontWeight: '800', fontSize: 15 },
   headerSub: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
   list: { padding: 16, gap: 8 },
   bubble: {
     maxWidth: '78%',
-    borderRadius: 16,
+    borderRadius: radius.card,
     padding: 10,
     paddingHorizontal: 14
   },
   bubbleMe: {
     alignSelf: 'flex-end',
     backgroundColor: colors.primary,
-    borderBottomRightRadius: 4
+    borderBottomRightRadius: 0
   },
   bubbleThem: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.cardLight,
     borderWidth: 1,
     borderColor: colors.border,
-    borderBottomLeftRadius: 4
+    borderBottomLeftRadius: 0
   },
   bubbleName: { color: colors.textSecondary, fontSize: 11, fontWeight: '700', marginBottom: 3 },
-  bubbleText: { color: '#fff', fontSize: 14 },
-  bubbleTextMe: { color: '#fff', fontSize: 14 },
-  bubbleTime: { color: 'rgba(255,255,255,0.45)', fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  bubbleText: { color: colors.textPrimary, fontSize: 14 },
+  bubbleTextMe: { color: colors.textOnDark, fontSize: 14 },
+  bubbleTime: { color: colors.textMuted, fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyIcon: { fontSize: 40, marginBottom: 10 },
-  emptyText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  emptyText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16 },
   emptySub: { color: colors.textSecondary, marginTop: 6, fontSize: 13 },
   inputRow: {
     flexDirection: 'row',
@@ -201,11 +201,11 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: colors.cardLight,
+    borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.border,
-    color: '#fff',
+    color: colors.textPrimary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
@@ -214,11 +214,11 @@ const styles = StyleSheet.create({
   sendBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.card,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  sendBtnDisabled: { backgroundColor: '#333' },
-  sendBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' }
+  sendBtnDisabled: { backgroundColor: colors.border },
+  sendBtnText: { color: colors.primaryOnDark, fontSize: 18, fontWeight: '800' }
 });

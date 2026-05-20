@@ -59,8 +59,8 @@ export default function XPBar({ current = 0, next = 1, showLabel = true, height 
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 999,
+    backgroundColor: colors.border,
+    borderRadius: 2,
     overflow: 'hidden',
     justifyContent: 'center',
   },
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 999,
+    borderRadius: 2,
     overflow: 'hidden',
     transformOrigin: 'left center',
   },
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 20,
     backgroundColor: '#fff',
-    borderRadius: 999,
+    borderRadius: 2,
   },
   label: {
     color: colors.textPrimary,

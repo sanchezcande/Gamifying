@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -11,12 +13,11 @@ import {
   View
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedPressable from '../components/AnimatedPressable';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
-import { colors, radius, shadows } from '../theme/theme';
+import { colors, fonts, radius, shadows } from '../theme/theme';
 
 const WORKOUT_TYPES = ['WEIGHTS', 'CARDIO', 'FUNCTIONAL', 'CALISTHENICS', 'OTHER'];
 const WORKOUT_LABELS = {
@@ -83,12 +84,7 @@ function SessionCard({ session, myId, onJoin, onCancel }) {
 
   return (
     <View style={[styles.card, { borderLeftColor: accent, borderLeftWidth: 3 }]}>
-      <LinearGradient
-        colors={[accent + '08', 'transparent']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
-      >
+      <View style={styles.cardGradient}>
         <View style={styles.cardTop}>
           <View style={[styles.workoutIconWrap, { backgroundColor: accent + '15' }]}>
             <Ionicons name={WORKOUT_ICONS[session.workoutType]} size={22} color={accent} />
@@ -149,13 +145,13 @@ function SessionCard({ session, myId, onJoin, onCancel }) {
             {isFull ? (
               <Text style={styles.joinBtnTextDisabled}>FULL</Text>
             ) : (
-              <LinearGradient colors={['#E00', '#900']} style={styles.joinBtnGrad}>
+              <View style={styles.joinBtnGrad}>
                 <Text style={styles.joinBtnText}>JOIN</Text>
-              </LinearGradient>
+              </View>
             )}
           </AnimatedPressable>
         )}
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -296,18 +292,18 @@ export default function GymBuddyScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#180003', '#0A0A0A']} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <View>
           <Text style={styles.title}>GYMBUDDY</Text>
           <Text style={styles.subtitle}>Find your workout partner</Text>
         </View>
         <AnimatedPressable style={styles.openBtn} onPress={() => setModalVisible(true)} haptic="medium" scaleDown={0.95}>
-          <LinearGradient colors={['#E00', '#900']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.openBtnGrad}>
-            <Ionicons name="add" size={18} color="#fff" />
+          <View style={styles.openBtnGrad}>
+            <Ionicons name="add" size={18} color={colors.primaryOnDark} />
             <Text style={styles.openBtnText}>OPEN SESSION</Text>
-          </LinearGradient>
+          </View>
         </AnimatedPressable>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.list}
@@ -315,7 +311,7 @@ export default function GymBuddyScreen() {
       >
         {sessions.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="barbell-outline" size={48} color="#333" />
+            <Ionicons name="barbell-outline" size={48} color={colors.textMuted} />
             <Text style={styles.emptyText}>No active sessions</Text>
             <Text style={styles.emptySubText}>Be the first to open one</Text>
           </View>
@@ -328,15 +324,15 @@ export default function GymBuddyScreen() {
 
       {/* Open session modal */}
       <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalBox}>
-            <LinearGradient colors={['#1A0003', '#111']} style={styles.modalGradientHeader}>
+            <View style={styles.modalGradientHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleRow}>
-                <Ionicons name="add-circle" size={22} color={colors.primary} style={{ marginRight: 8 }} />
+                <Ionicons name="add-circle" size={22} color={colors.accent} style={{ marginRight: 8 }} />
                 <Text style={styles.modalTitle}>OPEN SESSION</Text>
               </View>
-            </LinearGradient>
+            </View>
 
             <ScrollView style={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
               <Text style={styles.label}>WORKOUT TYPE</Text>
@@ -485,33 +481,33 @@ export default function GymBuddyScreen() {
                 disabled={submitting}
                 haptic="medium"
               >
-                <LinearGradient colors={['#E00', '#900']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.modalConfirmGrad}>
+                <View style={styles.modalConfirmGrad}>
                   {submitting ? (
                     <Text style={styles.modalConfirmText}>OPENING...</Text>
                   ) : (
                     <>
-                      <Ionicons name="flash" size={16} color="#fff" style={{ marginRight: 4 }} />
+                      <Ionicons name="flash" size={16} color={colors.primaryOnDark} style={{ marginRight: 4 }} />
                       <Text style={styles.modalConfirmText}>OPEN SESSION</Text>
                     </>
                   )}
-                </LinearGradient>
+                </View>
               </AnimatedPressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Cancel session modal */}
       <Modal visible={!!cancelTarget} animationType="slide" transparent onRequestClose={() => setCancelTarget(null)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalBox}>
-            <LinearGradient colors={['#1A0003', '#111']} style={styles.modalGradientHeader}>
+            <View style={styles.modalGradientHeader}>
               <View style={styles.modalHandle} />
               <View style={styles.modalTitleRow}>
-                <Ionicons name="close-circle" size={22} color="#c0392b" style={{ marginRight: 8 }} />
-                <Text style={[styles.modalTitle, { color: '#c0392b' }]}>CANCEL SESSION</Text>
+                <Ionicons name="close-circle" size={22} color={colors.danger} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { color: colors.danger }]}>CANCEL SESSION</Text>
               </View>
-            </LinearGradient>
+            </View>
 
             <View style={styles.modalScrollContent}>
               <View style={styles.cancelInfoRow}>
@@ -545,14 +541,14 @@ export default function GymBuddyScreen() {
                 disabled={cancelling}
                 haptic="medium"
               >
-                <LinearGradient colors={['#c0392b', '#8B0000']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.modalConfirmGrad}>
-                  <Ionicons name="trash" size={15} color="#fff" style={{ marginRight: 4 }} />
+                <View style={[styles.modalConfirmGrad, { backgroundColor: colors.danger }]}>
+                  <Ionicons name="trash" size={15} color={colors.primaryOnDark} style={{ marginRight: 4 }} />
                   <Text style={styles.modalConfirmText}>{cancelling ? 'CANCELLING...' : 'CONFIRM CANCEL'}</Text>
-                </LinearGradient>
+                </View>
               </AnimatedPressable>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -569,31 +565,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border
   },
-  title: { color: '#fff', fontWeight: '900', fontSize: 22, letterSpacing: 1 },
+  title: { color: colors.textPrimary, fontFamily: fonts.heading, fontSize: 22, letterSpacing: 1 },
   subtitle: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
   openBtn: {
-    borderRadius: 99,
+    borderRadius: radius.button,
     overflow: 'hidden',
-    ...shadows.card
   },
   openBtnGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 99,
+    borderRadius: radius.button,
+    backgroundColor: colors.primary,
     gap: 4
   },
-  openBtnText: { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
+  openBtnText: { color: colors.primaryOnDark, fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
   list: { padding: 16, paddingBottom: 34 },
   card: {
-    backgroundColor: '#111',
-    borderRadius: 16,
+    backgroundColor: colors.cardLight,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: '#1E1E1E',
+    borderColor: colors.border,
     marginBottom: 12,
     overflow: 'hidden',
-    ...shadows.card
   },
   cardGradient: {
     padding: 16
@@ -602,11 +597,11 @@ const styles = StyleSheet.create({
   workoutIconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: radius.card,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  cardName: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  cardName: { color: colors.textPrimary, fontWeight: '700', fontSize: 15 },
   myBadge: {
     backgroundColor: colors.primary + '33',
     borderWidth: 1,
@@ -637,23 +632,24 @@ const styles = StyleSheet.create({
   },
   joinersText: { color: colors.textSecondary, fontSize: 12, flex: 1 },
   joinBtn: {
-    borderRadius: 99,
+    borderRadius: radius.button,
     overflow: 'hidden'
   },
   joinBtnGrad: {
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 99
+    borderRadius: radius.button,
+    backgroundColor: colors.primary,
   },
-  joinBtnDisabled: { backgroundColor: '#1E1E1E', borderRadius: 99 },
-  joinBtnText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
-  joinBtnTextDisabled: { color: '#555', fontWeight: '800', fontSize: 13, letterSpacing: 0.5, textAlign: 'center', paddingVertical: 10 },
+  joinBtnDisabled: { backgroundColor: colors.border, borderRadius: radius.button },
+  joinBtnText: { color: colors.primaryOnDark, fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
+  joinBtnTextDisabled: { color: colors.textMuted, fontWeight: '800', fontSize: 13, letterSpacing: 0.5, textAlign: 'center', paddingVertical: 10 },
   joinedBadge: {
     flex: 1,
     flexDirection: 'row',
     borderWidth: 1,
     borderColor: colors.success,
-    borderRadius: 99,
+    borderRadius: radius.button,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center'
@@ -666,7 +662,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: 99,
+    borderRadius: radius.button,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center'
@@ -676,39 +672,42 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 99,
+    borderColor: colors.border,
+    borderRadius: radius.button,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },
   cancelBtnText: { color: colors.textSecondary, fontWeight: '700', fontSize: 12 },
   empty: { alignItems: 'center', paddingTop: 80 },
-  emptyText: { color: '#fff', fontWeight: '700', fontSize: 16, marginTop: 16 },
+  emptyText: { color: colors.textPrimary, fontWeight: '700', fontSize: 16, marginTop: 16 },
   emptySubText: { color: colors.textSecondary, marginTop: 6, fontSize: 13 },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
   modalBox: {
-    backgroundColor: '#111',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.card,
+    borderTopRightRadius: radius.card,
     borderWidth: 1,
-    borderColor: '#1E1E1E',
+    borderColor: colors.border,
     maxHeight: '90%'
   },
   modalGradientHeader: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: radius.card,
+    borderTopRightRadius: radius.card,
     paddingTop: 12,
     paddingHorizontal: 24,
     paddingBottom: 16,
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: colors.cardLight,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   modalHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#333',
+    backgroundColor: colors.border,
     marginBottom: 16
   },
   modalTitleRow: {
@@ -716,7 +715,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start'
   },
-  modalTitle: { color: colors.primary, fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
+  modalTitle: { color: colors.textPrimary, fontFamily: fonts.heading, fontSize: 16, letterSpacing: 0.5 },
   modalScrollContent: {
     paddingHorizontal: 24,
     paddingTop: 16
@@ -735,11 +734,11 @@ const styles = StyleSheet.create({
   pillText: { color: colors.textSecondary, fontSize: 13 },
   pillTextActive: { color: colors.primary, fontWeight: '700' },
   input: {
-    backgroundColor: '#0A0A0A',
-    borderRadius: 12,
+    backgroundColor: colors.cardLight,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: '#1E1E1E',
-    color: '#fff',
+    borderColor: colors.border,
+    color: colors.textPrimary,
     padding: 14,
     marginBottom: 24,
     fontSize: 14
@@ -747,8 +746,8 @@ const styles = StyleSheet.create({
   cancelInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 12,
+    backgroundColor: colors.cardLight,
+    borderRadius: radius.card,
     padding: 12,
     marginBottom: 16
   },
@@ -756,18 +755,18 @@ const styles = StyleSheet.create({
   modalCancelBtn: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.cardLight,
     borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 99,
+    borderColor: colors.border,
+    borderRadius: radius.button,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  modalCancelText: { color: '#AAA', fontWeight: '700', fontSize: 13 },
+  modalCancelText: { color: colors.textSecondary, fontWeight: '700', fontSize: 13 },
   modalConfirmBtn: {
     flex: 2,
-    borderRadius: 99,
+    borderRadius: radius.button,
     overflow: 'hidden'
   },
   modalConfirmGrad: {
@@ -775,14 +774,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 99
+    borderRadius: radius.button,
+    backgroundColor: colors.primary,
   },
   cancelConfirmBtn: {
     flex: 2,
-    borderRadius: 99,
+    borderRadius: radius.button,
     overflow: 'hidden'
   },
-  modalConfirmText: { color: '#fff', fontWeight: '800', letterSpacing: 0.3 },
+  modalConfirmText: { color: colors.primaryOnDark, fontWeight: '800', letterSpacing: 0.3 },
   // Custom time picker
   timePicker: {
     flexDirection: 'row',
@@ -792,15 +792,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#1E1E1E',
-    borderRadius: 16,
-    backgroundColor: '#0A0A0A'
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    backgroundColor: colors.cardLight
   },
   timeUnit: { alignItems: 'center', gap: 4 },
   timeAdj: {
     paddingHorizontal: 16,
     paddingVertical: 6
   },
-  timeVal: { color: '#fff', fontSize: 28, fontWeight: '800', minWidth: 52, textAlign: 'center' },
+  timeVal: { color: colors.textPrimary, fontSize: 28, fontWeight: '800', minWidth: 52, textAlign: 'center' },
   timeColon: { color: colors.textSecondary, fontSize: 28, fontWeight: '800', marginBottom: 4 }
 });

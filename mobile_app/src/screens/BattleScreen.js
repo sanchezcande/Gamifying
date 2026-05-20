@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Easing, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Dimensions, Easing, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,7 +7,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { useBattleData } from '../providers/BattleProvider';
 import apiService from '../services/apiService';
 import AvatarCircle from '../components/AvatarCircle';
-import AvatarSprite, { CLASS_GLOW, CLASS_AURA } from '../components/AvatarSprite';
+import AvatarSprite, { CLASS_GLOW } from '../components/AvatarSprite';
 import AnimatedPressable from '../components/AnimatedPressable';
 import LoadingScreen from '../components/LoadingScreen';
 import {
@@ -19,7 +19,10 @@ import {
   ParticleExplosion,
   ShockWave,
 } from '../components/BattleEffects';
-import { colors, radius } from '../theme/theme';
+import { colors, fonts, radius } from '../theme/theme';
+
+let Haptics;
+try { Haptics = require('expo-haptics'); } catch {}
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -30,119 +33,264 @@ const CLASS_MOVES = {
   ROOKIE:   { name: 'WILD HIT',        icon: '👊', color: '#888888', gradient: ['#181818', '#0a0a0a'] },
 };
 
-// Special finisher moves per class
 const SPECIAL_MOVES = {
-  WARRIOR:  { name: 'INFERNO SLAM',    emoji: '🌋', color: '#FF2200', particles: ['🔥','💥','🔥','⚡','🔥'] },
-  CHAMPION: { name: 'THUNDER STRIKE',  emoji: '⚡', color: '#3B82F6', particles: ['⚡','💙','⚡','✨','⚡'] },
-  FIGHTER:  { name: 'EMERALD CRUSHER', emoji: '💚', color: '#22C55E', particles: ['💚','💥','🌿','💚','💥'] },
-  ROOKIE:   { name: 'WILD SWING',      emoji: '👊', color: '#aaaaaa', particles: ['👊','💫','👊','💨','👊'] },
+  WARRIOR:  { name: 'INFERNO SLAM',    emoji: '🌋', color: '#FF2200' },
+  CHAMPION: { name: 'THUNDER STRIKE',  emoji: '⚡', color: '#3B82F6' },
+  FIGHTER:  { name: 'EMERALD CRUSHER', emoji: '💚', color: '#22C55E' },
+  ROOKIE:   { name: 'WILD SWING',      emoji: '👊', color: '#aaaaaa' },
 };
 
 const SUPP_ICONS = {
   PROTEIN: '💪', CREATINE: '⚡', PREWORKOUT: '🚀', AURA: '🔥', STREAK_SHIELD: '🛡',
 };
 
-// ─── Challenge Modal ───────────────────────────────────────────────────────────
-function ChallengeModal({ target, me, open, onCancel, onFight, fighting }) {
-  const scaleAnim   = useRef(new Animated.Value(0.85)).current;
+// ── Move definitions for the picker ──────────────────────────────────────────
+const BATTLE_MOVES = {
+  ATTACK: {
+    id: 'ATTACK', name: 'ATACAR', emoji: '👊',
+    desc: 'Golpe directo basado en tu Músculo',
+    color: '#FF6B35', isSpecial: false,
+  },
+  DEFEND: {
+    id: 'DEFEND', name: 'DEFENDER', emoji: '🛡',
+    desc: 'Reducís el daño 60% + contra-golpe',
+    color: '#22C55E', isSpecial: false,
+  },
+  PROTEIN_SURGE: {
+    id: 'PROTEIN_SURGE', name: 'PROTEIN SURGE', emoji: '💪',
+    desc: 'Golpe de fuerza devastador',
+    color: '#22C55E', isSpecial: true, supplement: 'PROTEIN',
+  },
+  CREATINE_BLAST: {
+    id: 'CREATINE_BLAST', name: 'CREATINE BLAST', emoji: '⚡',
+    desc: 'Descarga de poder brutal',
+    color: '#3B82F6', isSpecial: true, supplement: 'CREATINE',
+  },
+  PREWORKOUT_RUSH: {
+    id: 'PREWORKOUT_RUSH', name: 'RUSH', emoji: '🚀',
+    desc: 'Atacás primero + daño extra',
+    color: '#FF6B35', isSpecial: true, supplement: 'PREWORKOUT',
+  },
+  AURA_BURST: {
+    id: 'AURA_BURST', name: 'AURA BURST', emoji: '🔥',
+    desc: 'Daño total + te curás 15 HP',
+    color: '#CC0000', isSpecial: true, supplement: 'AURA',
+  },
+};
+
+const SUPPLEMENT_TO_MOVE = {
+  PROTEIN: 'PROTEIN_SURGE',
+  CREATINE: 'CREATINE_BLAST',
+  PREWORKOUT: 'PREWORKOUT_RUSH',
+  AURA: 'AURA_BURST',
+};
+
+// ─── Move Picker Modal ───────────────────────────────────────────────────────
+function MovePickerModal({ visible, target, me, onCancel, onFight, fighting }) {
+  const insets = useSafeAreaInsets();
+  const [moves, setMoves] = useState([null, null, null]);
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const vsScale     = useRef(new Animated.Value(1)).current;
-  const vsPulseRef  = useRef(null);
+
+  // Get available special moves from active supplements
+  const activeCategories = (me?.activeSupplements || [])
+    .map(s => s.shopItem?.category || s.category)
+    .filter(cat => SUPPLEMENT_TO_MOVE[cat]);
+  const availableSpecials = activeCategories.map(cat => SUPPLEMENT_TO_MOVE[cat]);
 
   useEffect(() => {
-    if (open) {
-      Animated.parallel([
-        Animated.spring(scaleAnim,   { toValue: 1, friction: 5, useNativeDriver: true }),
-        Animated.timing(opacityAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-      ]).start(() => {
-        vsPulseRef.current = Animated.loop(
-          Animated.sequence([
-            Animated.timing(vsScale, { toValue: 1.22, duration: 480, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-            Animated.timing(vsScale, { toValue: 1,    duration: 480, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          ])
-        );
-        vsPulseRef.current.start();
-      });
-    } else {
-      vsPulseRef.current?.stop();
-      scaleAnim.setValue(0.85);
+    if (visible) {
+      setMoves([null, null, null]);
+      scaleAnim.setValue(0.9);
       opacityAnim.setValue(0);
-      vsScale.setValue(1);
+      Animated.parallel([
+        Animated.spring(scaleAnim, { toValue: 1, friction: 6, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
     }
-  }, [open]);
+  }, [visible]);
 
-  if (!target || !open) return null;
+  const usedSpecials = new Set(moves.filter(m => m && BATTLE_MOVES[m]?.isSpecial));
+  const allPicked = moves.every(m => m !== null);
+  const myMove = CLASS_MOVES[me?.avatarClass] || CLASS_MOVES.ROOKIE;
 
-  const myMove    = CLASS_MOVES[me?.avatarClass]    || CLASS_MOVES.ROOKIE;
-  const theirMove = CLASS_MOVES[target.avatarClass] || CLASS_MOVES.ROOKIE;
+  const pickMove = (roundIdx, moveId) => {
+    if (Haptics && Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setMoves(prev => {
+      const next = [...prev];
+      next[roundIdx] = next[roundIdx] === moveId ? null : moveId;
+      return next;
+    });
+  };
+
+  const handleFight = () => {
+    if (!allPicked || fighting) return;
+    if (Haptics && Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+    onFight(moves);
+  };
+
+  if (!visible) return null;
 
   return (
-    <Modal visible={open} transparent animationType="none" statusBarTranslucent>
-      <View style={c.backdrop}>
-        <Animated.View style={[c.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>
-          <LinearGradient colors={['#111', '#0a0a0a']} style={c.inner}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+      <View style={mp.backdrop}>
+        <Animated.View style={[mp.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>
+          <ScrollView style={{ maxHeight: '100%' }} contentContainerStyle={[mp.inner, { paddingBottom: insets.bottom + 16 }]} showsVerticalScrollIndicator={false}>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-              <Ionicons name="flash" size={16} color="#fff" />
-              <Text style={c.titleTop}>CHALLENGE</Text>
-            </View>
-
-            {/* Fighters preview */}
-            <View style={c.fightersRow}>
-              <View style={c.fighterSide}>
-                <AvatarCircle
-                  name={me?.name}
-                  avatarClass={me?.avatarClass}
-                  bodyStage={me?.avatarBodyStage}
-                  size="large"
-                  activeSupplements={me?.activeSupplements || []}
-                  profilePhoto={me?.profilePhoto}
-                />
-                <Text style={c.fighterName}>{me?.name}</Text>
-                <Text style={[c.moveLabel, { color: myMove.color }]}>{myMove.icon} {myMove.name}</Text>
+            {/* VS Header */}
+            <View style={mp.vsRow}>
+              <View style={mp.vsFighter}>
+                <AvatarCircle name={me?.name} avatarClass={me?.avatarClass} bodyStage={me?.avatarBodyStage} size="medium" profilePhoto={me?.profilePhoto} />
+                <Text style={[mp.vsName, { color: myMove.color }]}>{me?.name?.split(' ')[0]}</Text>
               </View>
-
-              <View style={c.vsCol}>
-                <Animated.Text style={[c.vsText, { transform: [{ scale: vsScale }] }]}>VS</Animated.Text>
-              </View>
-
-              <View style={c.fighterSide}>
-                <AvatarCircle
-                  name={target.name}
-                  avatarClass={target.avatarClass}
-                  bodyStage={target?.avatarBodyStage}
-                  size="large"
-                  profilePhoto={target.profilePhoto}
-                />
-                <Text style={c.fighterName}>{target.name}</Text>
-                <Text style={[c.moveLabel, { color: theirMove.color }]}>{theirMove.icon} {theirMove.name}</Text>
+              <Text style={mp.vsText}>VS</Text>
+              <View style={mp.vsFighter}>
+                <AvatarCircle name={target?.name} avatarClass={target?.avatarClass} bodyStage={target?.avatarBodyStage} size="medium" profilePhoto={target?.profilePhoto} />
+                <Text style={mp.vsName}>{target?.name?.split(' ')[0]}</Text>
               </View>
             </View>
 
-            <Text style={c.rewardHint}>
-              Winner takes <Text style={{ color: '#d4af37' }}>50 GAINS</Text> + <Text style={{ color: colors.primary }}>30 POWER</Text>
-            </Text>
+            <Text style={mp.title}>ELEGÍ TUS MOVIMIENTOS</Text>
+            <Text style={mp.subtitle}>Uno por round. Los especiales se usan 1 sola vez.</Text>
 
-            <Pressable
-              style={[c.fightBtn, fighting && { opacity: 0.6 }]}
-              onPress={onFight}
-              disabled={fighting}
+            {/* Round pickers */}
+            {[0, 1, 2].map(roundIdx => (
+              <View key={roundIdx} style={mp.roundSection}>
+                <Text style={mp.roundLabel}>ROUND {roundIdx + 1}</Text>
+                <View style={mp.movesRow}>
+                  {/* Base moves */}
+                  {['ATTACK', 'DEFEND'].map(moveId => {
+                    const move = BATTLE_MOVES[moveId];
+                    const selected = moves[roundIdx] === moveId;
+                    return (
+                      <AnimatedPressable
+                        key={moveId}
+                        style={[mp.moveCard, selected && { borderColor: move.color, backgroundColor: move.color + '15' }]}
+                        onPress={() => pickMove(roundIdx, moveId)}
+                        scaleDown={0.93}
+                        haptic={null}
+                      >
+                        <Text style={mp.moveEmoji}>{move.emoji}</Text>
+                        <Text style={[mp.moveName, selected && { color: move.color }]}>{move.name}</Text>
+                        <Text style={mp.moveDesc}>{move.desc}</Text>
+                      </AnimatedPressable>
+                    );
+                  })}
+                </View>
+
+                {/* Special moves row */}
+                {availableSpecials.length > 0 && (
+                  <View style={mp.movesRow}>
+                    {availableSpecials.map(moveId => {
+                      const move = BATTLE_MOVES[moveId];
+                      const selected = moves[roundIdx] === moveId;
+                      const usedInOtherRound = usedSpecials.has(moveId) && moves[roundIdx] !== moveId;
+                      return (
+                        <AnimatedPressable
+                          key={moveId}
+                          style={[
+                            mp.moveCard, mp.moveCardSpecial,
+                            { borderColor: move.color + '44' },
+                            selected && { borderColor: move.color, backgroundColor: move.color + '15' },
+                            usedInOtherRound && { opacity: 0.3 },
+                          ]}
+                          onPress={() => !usedInOtherRound && pickMove(roundIdx, moveId)}
+                          disabled={usedInOtherRound}
+                          scaleDown={0.93}
+                          haptic={null}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={mp.moveEmoji}>{move.emoji}</Text>
+                            <View style={[mp.specialBadge, { backgroundColor: move.color + '22' }]}>
+                              <Text style={[mp.specialBadgeText, { color: move.color }]}>ESPECIAL</Text>
+                            </View>
+                          </View>
+                          <Text style={[mp.moveName, selected && { color: move.color }]}>{move.name}</Text>
+                          <Text style={mp.moveDesc}>{usedInOtherRound ? 'Ya lo usaste' : move.desc}</Text>
+                        </AnimatedPressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {/* No supplements hint */}
+            {availableSpecials.length === 0 && (
+              <View style={mp.hintBox}>
+                <Ionicons name="information-circle" size={16} color={colors.textMuted} />
+                <Text style={mp.hintText}>Comprá suplementos en la tienda para desbloquear movimientos especiales</Text>
+              </View>
+            )}
+
+            {/* Fight button */}
+            <AnimatedPressable
+              style={[mp.fightBtn, (!allPicked || fighting) && { opacity: 0.4 }]}
+              onPress={handleFight}
+              disabled={!allPicked || fighting}
+              haptic={null}
+              scaleDown={0.95}
             >
-              <LinearGradient colors={[myMove.color, '#8b0000']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={c.fightBtnGrad}>
-                <Text style={c.fightBtnText}>{fighting ? 'LOADING...' : 'FIGHT NOW'}</Text>
+              <LinearGradient colors={allPicked ? ['#E00', '#900'] : [colors.border, colors.borderLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={mp.fightBtnGrad}>
+                <Ionicons name="flash" size={20} color="#fff" />
+                <Text style={mp.fightBtnText}>{fighting ? 'PELEANDO...' : allPicked ? 'PELEAR' : 'ELEGÍ LOS 3 MOVIMIENTOS'}</Text>
               </LinearGradient>
+            </AnimatedPressable>
+
+            <Pressable style={mp.cancelBtn} onPress={onCancel} disabled={fighting}>
+              <Text style={mp.cancelText}>Cancelar</Text>
             </Pressable>
 
-            <Pressable style={c.backBtn} onPress={onCancel} disabled={fighting}>
-              <Text style={c.backBtnText}>Back down</Text>
-            </Pressable>
-
-          </LinearGradient>
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
   );
 }
+
+const mp = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 14 },
+  card: { maxHeight: '92%', borderRadius: 20, overflow: 'hidden', backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+  inner: { padding: 20 },
+
+  vsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 20 },
+  vsFighter: { alignItems: 'center', gap: 6 },
+  vsName: { color: colors.textSecondary, fontWeight: '800', fontSize: 12 },
+  vsText: { color: colors.textPrimary, fontWeight: '900', fontSize: 22 },
+
+  title: { color: colors.textPrimary, fontWeight: '900', fontSize: 18, letterSpacing: 0.5, textAlign: 'center' },
+  subtitle: { color: colors.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 16 },
+
+  roundSection: { marginBottom: 14 },
+  roundLabel: { color: colors.textMuted, fontWeight: '900', fontSize: 11, letterSpacing: 2, marginBottom: 8 },
+  movesRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+
+  moveCard: {
+    flex: 1, backgroundColor: colors.cardLight, borderRadius: 12,
+    borderWidth: 1, borderColor: colors.border,
+    padding: 10, gap: 3,
+  },
+  moveCardSpecial: { backgroundColor: '#fff' },
+  moveEmoji: { fontSize: 20 },
+  moveName: { color: colors.textPrimary, fontWeight: '800', fontSize: 12 },
+  moveDesc: { color: colors.textMuted, fontSize: 10, lineHeight: 14 },
+  specialBadge: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
+  specialBadgeText: { fontSize: 8, fontWeight: '900', letterSpacing: 0.5 },
+
+  hintBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cardLight, borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: colors.border },
+  hintText: { color: colors.textMuted, fontSize: 11, flex: 1, lineHeight: 16 },
+
+  fightBtn: { borderRadius: 14, overflow: 'hidden', marginTop: 8 },
+  fightBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
+  fightBtnText: { color: '#fff', fontWeight: '900', fontSize: 15, letterSpacing: 1 },
+
+  cancelBtn: { alignItems: 'center', paddingVertical: 12 },
+  cancelText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+});
 
 // ─── HP Bar ───────────────────────────────────────────────────────────────────
 function HPBar({ hpAnim, color, flip }) {
@@ -159,27 +307,46 @@ function HPBar({ hpAnim, color, flip }) {
   );
 }
 const hp = StyleSheet.create({
-  track: { height: 8, backgroundColor: '#1a1a1a', borderRadius: 99, overflow: 'hidden', flex: 1 },
+  track: { height: 8, backgroundColor: colors.border, borderRadius: 99, overflow: 'hidden', flex: 1 },
   fill:  { height: '100%', width: '100%', borderRadius: 99 },
+});
+
+// ─── Damage Number Float ──────────────────────────────────────────────────────
+function DamageFloat({ value, color, heal }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 1200, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, []);
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -60] });
+  const opacity = anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] });
+  return (
+    <Animated.Text style={[dmgStyle.text, { color, opacity, transform: [{ translateY }] }]}>
+      {heal ? `+${value}` : `-${value}`}
+    </Animated.Text>
+  );
+}
+const dmgStyle = StyleSheet.create({
+  text: { position: 'absolute', top: -10, fontWeight: '900', fontSize: 24, textShadowRadius: 8, textShadowOffset: { width: 0, height: 0 } },
 });
 
 // ─── Battle Animation Modal ────────────────────────────────────────────────────
 function BattleModal({ open, result, me, target, onClose }) {
-  const won       = result?.winnerId === me?.id;
+  const won = result?.winnerId === me?.id;
+  const rounds = result?.rounds || [];
 
-  // ── Positions ──
+  // Positions
   const myX        = useRef(new Animated.Value(-SCREEN_W)).current;
   const theirX     = useRef(new Animated.Value(SCREEN_W)).current;
   const myLunge    = useRef(new Animated.Value(0)).current;
   const theirLunge = useRef(new Animated.Value(0)).current;
 
-  // ── Auras / charge ──
+  // Charge auras
   const myChargeScale      = useRef(new Animated.Value(1)).current;
   const theirChargeScale   = useRef(new Animated.Value(1)).current;
   const myChargeOpacity    = useRef(new Animated.Value(0)).current;
   const theirChargeOpacity = useRef(new Animated.Value(0)).current;
 
-  // ── Hit reactions ──
+  // Hit reactions
   const myHitX       = useRef(new Animated.Value(0)).current;
   const theirHitX    = useRef(new Animated.Value(0)).current;
   const myOpacity    = useRef(new Animated.Value(1)).current;
@@ -187,69 +354,63 @@ function BattleModal({ open, result, me, target, onClose }) {
   const myTilt       = useRef(new Animated.Value(0)).current;
   const theirTilt    = useRef(new Animated.Value(0)).current;
 
-  // ── Winner bounce ──
+  // Winner bounce
   const winnerScale = useRef(new Animated.Value(1)).current;
 
-  // ── HP bars ──
+  // HP bars
   const myHP    = useRef(new Animated.Value(100)).current;
   const theirHP = useRef(new Animated.Value(100)).current;
 
-  // ── Screen effects ──
+  // Screen effects
   const shakeX       = useRef(new Animated.Value(0)).current;
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const colorFlash   = useRef(new Animated.Value(0)).current;
   const darkOverlay  = useRef(new Animated.Value(0)).current;
 
-  // ── Impact ──
+  // Impact
   const impactOpacity = useRef(new Animated.Value(0)).current;
   const impactScale   = useRef(new Animated.Value(0)).current;
-  const megaOpacity   = useRef(new Animated.Value(0)).current;
-  const megaScale     = useRef(new Animated.Value(0)).current;
 
-  // ── Round announcement ──
+  // Round announcement
   const roundOpacity = useRef(new Animated.Value(0)).current;
   const roundScale   = useRef(new Animated.Value(1.4)).current;
 
-  // ── Move name flash ──
+  // Move name flash
   const moveNameOpacity = useRef(new Animated.Value(0)).current;
   const moveNameScale   = useRef(new Animated.Value(0.6)).current;
 
-  // ── Result ──
+  // Result
   const resultOpacity = useRef(new Animated.Value(0)).current;
   const resultY       = useRef(new Animated.Value(50)).current;
 
-  // ── UI state ──
+  // UI state
   const [phase, setPhase]         = useState('idle');
   const [roundText, setRoundText] = useState('');
   const [moveName, setMoveName]   = useState('');
   const [showHP, setShowHP]       = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [dmgFloats, setDmgFloats]   = useState([]);
+
+  const [impactKey, setImpactKey] = useState(0);
+  const [shockKey, setShockKey]   = useState(0);
+
+  const [showMagicMe, setShowMagicMe]       = useState(false);
+  const [showMagicThem, setShowMagicThem]    = useState(false);
+  const [showAmbientMe, setShowAmbientMe]   = useState(false);
+  const [showAmbientThem, setShowAmbientThem] = useState(false);
+
+  const myGlow    = CLASS_GLOW[me?.avatarClass]     || '#888';
+  const theirGlow = CLASS_GLOW[target?.avatarClass]  || '#888';
+  const mySparks  = CLASS_SPARKS[me?.avatarClass]    || CLASS_SPARKS.ROOKIE;
+  const theirSparks = CLASS_SPARKS[target?.avatarClass] || CLASS_SPARKS.ROOKIE;
+  const myEmoji   = CLASS_EMOJI[me?.avatarClass]     || '✨';
+  const theirEmoji = CLASS_EMOJI[target?.avatarClass] || '✨';
+  const winnerGlow = won ? myGlow : theirGlow;
+
   const timers = useRef([]);
+  const T = (ms, fn) => { const id = setTimeout(fn, ms); timers.current.push(id); };
 
-  // ── Magic effect triggers (incrementing = fires every time, never resets to 0) ──
-  const [impactKey, setImpactKey] = useState(0);  // regular hit particles
-  const [megaKey,   setMegaKey]   = useState(0);  // mega final hit
-  const [shockKey,  setShockKey]  = useState(0);  // shockwave rings
-
-  // ── Magic effect visibility ──
-  const [showMagicMe,    setShowMagicMe]    = useState(false);
-  const [showMagicThem,  setShowMagicThem]  = useState(false);
-  const [showAmbientMe,  setShowAmbientMe]  = useState(false);
-  const [showAmbientThem,setShowAmbientThem]= useState(false);
-
-  const myGlow         = CLASS_GLOW[me?.avatarClass]     || '#888';
-  const theirGlow      = CLASS_GLOW[target?.avatarClass] || '#888';
-  const winnerGlow     = won ? myGlow : theirGlow;
-  const mySpecial      = SPECIAL_MOVES[me?.avatarClass]     || SPECIAL_MOVES.ROOKIE;
-  const theirSpecial   = SPECIAL_MOVES[target?.avatarClass] || SPECIAL_MOVES.ROOKIE;
-  const winnerSpecial  = won ? mySpecial : theirSpecial;
-  const mySparks       = CLASS_SPARKS[me?.avatarClass]     || CLASS_SPARKS.ROOKIE;
-  const theirSparks    = CLASS_SPARKS[target?.avatarClass] || CLASS_SPARKS.ROOKIE;
-  const impactSparks   = [...mySparks, ...theirSparks];
-  const myEmoji        = CLASS_EMOJI[me?.avatarClass]     || '✨';
-  const theirEmoji     = CLASS_EMOJI[target?.avatarClass] || '✨';
-
-  // ── Helpers ──
+  // Helpers
   const shake = (intensity = 12) => Animated.sequence([
     Animated.timing(shakeX, { toValue: -intensity, duration: 50, useNativeDriver: true }),
     Animated.timing(shakeX, { toValue:  intensity, duration: 50, useNativeDriver: true }),
@@ -259,8 +420,8 @@ function BattleModal({ open, result, me, target, onClose }) {
   ]);
 
   const flash = (val = 1, dur = 60) => Animated.sequence([
-    Animated.timing(flashOpacity, { toValue: val, duration: dur,     useNativeDriver: true }),
-    Animated.timing(flashOpacity, { toValue: 0,   duration: dur * 4, useNativeDriver: true }),
+    Animated.timing(flashOpacity, { toValue: val, duration: dur, useNativeDriver: true }),
+    Animated.timing(flashOpacity, { toValue: 0, duration: dur * 4, useNativeDriver: true }),
   ]);
 
   const showRound = (text, cb) => {
@@ -268,111 +429,85 @@ function BattleModal({ open, result, me, target, onClose }) {
     roundOpacity.setValue(0); roundScale.setValue(1.5);
     Animated.parallel([
       Animated.timing(roundOpacity, { toValue: 1, duration: 120, useNativeDriver: true }),
-      Animated.spring(roundScale,   { toValue: 1, friction: 5,   useNativeDriver: true }),
-    ]).start(() => {
-      setTimeout(() => {
-        Animated.timing(roundOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(cb);
-      }, 700);
-    });
+      Animated.spring(roundScale, { toValue: 1, friction: 5, useNativeDriver: true }),
+    ]).start(() => { setTimeout(() => { Animated.timing(roundOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(cb); }, 700); });
   };
 
-  const showMoveName = (name, cb) => {
+  const showMoveBanner = (name, cb) => {
     setMoveName(name);
     moveNameOpacity.setValue(0); moveNameScale.setValue(0.5);
     Animated.parallel([
       Animated.timing(moveNameOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-      Animated.spring(moveNameScale,   { toValue: 1, friction: 4,   useNativeDriver: true }),
-    ]).start(() => {
-      setTimeout(() => {
-        Animated.timing(moveNameOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(cb);
-      }, 900);
-    });
+      Animated.spring(moveNameScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+    ]).start(() => { setTimeout(() => { Animated.timing(moveNameOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(cb); }, 800); });
   };
 
   const lunge = (attacker, dir, cb, isMega = false) => {
-    const lv     = attacker === 'me' ? myLunge : theirLunge;
+    const lv = attacker === 'me' ? myLunge : theirLunge;
     const offset = dir * SCREEN_W * 0.28;
-
     Animated.timing(lv, { toValue: offset, duration: 200, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
       flash();
       shake(isMega ? 20 : 12);
-
-      // Particle burst + shockwave at impact
-      if (isMega) {
-        setMegaKey(k => k + 1);
-      } else {
-        setImpactKey(k => k + 1);
-      }
+      setImpactKey(k => k + 1);
       setShockKey(k => k + 1);
-
-      // impact burst emoji
       impactOpacity.setValue(0); impactScale.setValue(0);
       Animated.parallel([
-        Animated.spring(impactScale,   { toValue: 1, friction: isMega ? 2 : 3, tension: 200, useNativeDriver: true }),
+        Animated.spring(impactScale, { toValue: 1, friction: isMega ? 2 : 3, tension: 200, useNativeDriver: true }),
         Animated.timing(impactOpacity, { toValue: 1, duration: 60, useNativeDriver: true }),
       ]).start();
       setTimeout(() => Animated.timing(impactOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(), 300);
-
-      // pull back
       setTimeout(() => Animated.spring(lv, { toValue: 0, friction: 6, useNativeDriver: true }).start(cb), 180);
     });
   };
 
   const hitReaction = (tgt, dir) => {
-    const hitX = tgt === 'me' ? myHitX    : theirHitX;
-    const opac = tgt === 'me' ? myOpacity  : theirOpacity;
+    const hitX = tgt === 'me' ? myHitX : theirHitX;
+    const opac = tgt === 'me' ? myOpacity : theirOpacity;
     Animated.sequence([
       Animated.timing(hitX, { toValue: dir * 18, duration: 100, useNativeDriver: true }),
-      Animated.timing(hitX, { toValue: 0,        duration: 100, useNativeDriver: true }),
+      Animated.timing(hitX, { toValue: 0, duration: 100, useNativeDriver: true }),
     ]).start();
     Animated.loop(Animated.sequence([
       Animated.timing(opac, { toValue: 0.3, duration: 70, useNativeDriver: true }),
-      Animated.timing(opac, { toValue: 1,   duration: 70, useNativeDriver: true }),
+      Animated.timing(opac, { toValue: 1, duration: 70, useNativeDriver: true }),
     ]), { iterations: 3 }).start();
   };
 
-  const chargeUp = (fighter, showMagic = true) => {
-    const scale = fighter === 'me' ? myChargeScale    : theirChargeScale;
-    const opac  = fighter === 'me' ? myChargeOpacity  : theirChargeOpacity;
+  const chargeUp = (fighter) => {
+    const scale = fighter === 'me' ? myChargeScale : theirChargeScale;
+    const opac = fighter === 'me' ? myChargeOpacity : theirChargeOpacity;
     opac.setValue(1);
-
-    if (showMagic) {
-      if (fighter === 'me') {
-        setShowMagicMe(true);
-        setShowAmbientMe(true);
-      } else {
-        setShowMagicThem(true);
-        setShowAmbientThem(true);
-      }
-    }
-
+    if (fighter === 'me') { setShowMagicMe(true); setShowAmbientMe(true); }
+    else { setShowMagicThem(true); setShowAmbientThem(true); }
     return Animated.loop(Animated.sequence([
       Animated.timing(scale, { toValue: 1.18, duration: 300, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1,    duration: 300, useNativeDriver: true }),
-    ]), { iterations: 4 });
+      Animated.timing(scale, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]), { iterations: 3 });
   };
 
   const stopCharge = (fighter) => {
-    (fighter === 'me' ? myChargeOpacity  : theirChargeOpacity).setValue(0);
-    (fighter === 'me' ? myChargeScale    : theirChargeScale).setValue(1);
-    if (fighter === 'me') {
-      setShowMagicMe(false);
-      setShowAmbientMe(false);
-    } else {
-      setShowMagicThem(false);
-      setShowAmbientThem(false);
-    }
+    (fighter === 'me' ? myChargeOpacity : theirChargeOpacity).setValue(0);
+    (fighter === 'me' ? myChargeScale : theirChargeScale).setValue(1);
+    if (fighter === 'me') { setShowMagicMe(false); setShowAmbientMe(false); }
+    else { setShowMagicThem(false); setShowAmbientThem(false); }
+  };
+
+  const addDmgFloat = (side, value, heal = false) => {
+    const id = Date.now() + Math.random();
+    const color = heal ? '#22C55E' : '#FF4444';
+    setDmgFloats(prev => [...prev, { id, side, value, color, heal }]);
+    setTimeout(() => setDmgFloats(prev => prev.filter(d => d.id !== id)), 1500);
   };
 
   const resetAll = () => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
     setPhase('idle'); setRoundText(''); setMoveName('');
-    setShowHP(false); setShowResult(false);
+    setShowHP(false); setShowResult(false); setDmgFloats([]);
     setShowMagicMe(false); setShowMagicThem(false);
     setShowAmbientMe(false); setShowAmbientThem(false);
-    [myX, myLunge, myHitX, myTilt, myChargeOpacity, myChargeScale].forEach(v => v.setValue(0));
-    [theirX, theirLunge, theirHitX, theirTilt, theirChargeOpacity, theirChargeScale].forEach(v => v.setValue(0));
+    [myLunge, myHitX, myTilt, myChargeOpacity].forEach(v => v.setValue(0));
+    [theirLunge, theirHitX, theirTilt, theirChargeOpacity].forEach(v => v.setValue(0));
     myX.setValue(-SCREEN_W); theirX.setValue(SCREEN_W);
     myOpacity.setValue(1); theirOpacity.setValue(1);
     myHP.setValue(100); theirHP.setValue(100);
@@ -381,159 +516,164 @@ function BattleModal({ open, result, me, target, onClose }) {
     shakeX.setValue(0); flashOpacity.setValue(0); darkOverlay.setValue(0);
     colorFlash.setValue(0);
     impactOpacity.setValue(0); impactScale.setValue(0);
-    megaOpacity.setValue(0); megaScale.setValue(0);
     roundOpacity.setValue(0); moveNameOpacity.setValue(0);
     resultOpacity.setValue(0); resultY.setValue(50);
   };
 
-  const T = (ms, fn) => { const id = setTimeout(fn, ms); timers.current.push(id); };
-
   useEffect(() => {
-    if (!open) { resetAll(); return; }
-
-    const loserHP       = won ? theirHP : myHP;
-    const winnerFighter = won ? 'me'    : 'them';
-    const loserFighter  = won ? 'them'  : 'me';
-    const winnerDir     = won ? 1 : -1;
-    const loserDir      = won ? -1 : 1;
+    if (!open || rounds.length === 0) { resetAll(); return; }
 
     setPhase('enter');
 
-    // ── ENTER: slide in ─────────────────────────────────────────────────────
+    // Entrance
     Animated.parallel([
-      Animated.spring(myX,    { toValue: 0, friction: 5, tension: 60, useNativeDriver: true }),
+      Animated.spring(myX, { toValue: 0, friction: 5, tension: 60, useNativeDriver: true }),
       Animated.spring(theirX, { toValue: 0, friction: 5, tension: 60, useNativeDriver: true }),
     ]).start();
 
     T(1000, () => setShowHP(true));
 
-    // ── ROUND 1 ─────────────────────────────────────────────────────────────
-    T(1600, () => showRound('ROUND 1', () => {
-      setPhase('round1');
-      const c = chargeUp(winnerFighter);
-      c.start();
-      T(900, () => {
-        c.stop();
-        stopCharge(winnerFighter);
-        lunge(winnerFighter, winnerDir, () => {
-          hitReaction(loserFighter, winnerDir * 2);
-          Animated.timing(loserHP, { toValue: 65, duration: 500, useNativeDriver: true }).start();
+    // Animate each round
+    const animateRound = (roundIdx, startTime) => {
+      const rd = rounds[roundIdx];
+      if (!rd) return startTime;
+      const isLast = roundIdx === rounds.length - 1;
+      const roundLabel = isLast && rounds.length === 3 ? '⚡ ROUND FINAL ⚡' : `ROUND ${roundIdx + 1}`;
+
+      // Get move display names
+      const myMoveInfo = BATTLE_MOVES[rd.challengerMove] || { emoji: '👊', name: rd.challengerMove };
+      const theirMoveInfo = BATTLE_MOVES[rd.defenderMove] || { emoji: '👊', name: rd.defenderMove };
+      const myIsSpecial = myMoveInfo.isSpecial;
+      const theirIsSpecial = theirMoveInfo?.isSpecial;
+
+      // Round announcement
+      T(startTime, () => showRound(roundLabel, () => {
+        setPhase(`round${roundIdx + 1}`);
+
+        // Show move names
+        const moveText = `${myMoveInfo.emoji} ${myMoveInfo.name}  vs  ${theirMoveInfo.emoji} ${theirMoveInfo.name}`;
+        showMoveBanner(moveText, () => {});
+
+        // Dark overlay for final round
+        if (isLast) {
+          Animated.timing(darkOverlay, { toValue: 0.5, duration: 300, useNativeDriver: true }).start();
+        }
+
+        // My attack
+        T(800, () => {
+          if (rd.challengerMove !== 'DEFEND') {
+            const c = chargeUp('me');
+            c.start();
+            T(700, () => {
+              c.stop(); stopCharge('me');
+              lunge('me', 1, () => {
+                hitReaction('them', 2);
+                addDmgFloat('them', rd.challengerDamageDealt);
+                Animated.timing(theirHP, { toValue: rd.defenderHP, duration: 400, useNativeDriver: true }).start();
+              }, isLast && myIsSpecial);
+            });
+          } else {
+            // Defend pose - just show shield
+            addDmgFloat('me', rd.defenderDamageDealt);
+          }
         });
-      });
-    }));
 
-    // ── ROUND 2: loser counter-attacks ──────────────────────────────────────
-    T(4400, () => showRound('ROUND 2', () => {
-      setPhase('round2');
-      const c2 = chargeUp(loserFighter);
-      c2.start();
-      T(900, () => {
-        c2.stop();
-        stopCharge(loserFighter);
-        lunge(loserFighter, loserDir, () => {
-          hitReaction(winnerFighter, loserDir * 2);
-          const winnerHPBar = won ? myHP : theirHP;
-          Animated.timing(winnerHPBar, { toValue: 80, duration: 500, useNativeDriver: true }).start();
+        // Their attack
+        T(2000, () => {
+          if (isLast) {
+            Animated.timing(darkOverlay, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          }
+          if (rd.defenderMove !== 'DEFEND') {
+            const c2 = chargeUp('them');
+            c2.start();
+            T(700, () => {
+              c2.stop(); stopCharge('them');
+              lunge('them', -1, () => {
+                hitReaction('me', -2);
+                addDmgFloat('me', rd.defenderDamageDealt);
+                Animated.timing(myHP, { toValue: rd.challengerHP, duration: 400, useNativeDriver: true }).start();
+              }, isLast && theirIsSpecial);
+            });
+          } else {
+            addDmgFloat('them', rd.challengerDamageDealt);
+            Animated.timing(myHP, { toValue: rd.challengerHP, duration: 400, useNativeDriver: true }).start();
+            Animated.timing(theirHP, { toValue: rd.defenderHP, duration: 400, useNativeDriver: true }).start();
+          }
         });
-      });
-    }));
 
-    // ── FINAL ROUND ──────────────────────────────────────────────────────────
-    T(7800, () => showRound('⚡ FINAL ROUND ⚡', () => {
-      setPhase('final');
+        // Heals
+        if (rd.challengerHeal > 0) {
+          T(2800, () => addDmgFloat('me', rd.challengerHeal, true));
+        }
+        if (rd.defenderHeal > 0) {
+          T(2800, () => addDmgFloat('them', rd.defenderHeal, true));
+        }
 
-      // Screen goes dark
-      Animated.timing(darkOverlay, { toValue: 0.7, duration: 400, useNativeDriver: true }).start();
-
-      // BIG charge-up: magic circle grows huge
-      const cFinal = chargeUp(winnerFighter, true);
-      cFinal.start();
-      const chargeScale = won ? myChargeScale   : theirChargeScale;
-      const chargeOpac  = won ? myChargeOpacity : theirChargeOpacity;
-      chargeOpac.setValue(1);
-      Animated.timing(chargeScale, { toValue: 2.4, duration: 1800, useNativeDriver: true }).start();
-
-      // Special move name
-      T(1000, () => showMoveName(`${winnerSpecial.emoji}  ${winnerSpecial.name}`, () => {}));
-
-      // MEGA ATTACK
-      T(2200, () => {
-        cFinal.stop();
-        stopCharge(winnerFighter);
-        Animated.timing(darkOverlay, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-
-        lunge(winnerFighter, winnerDir, () => {
-          // Mega impact burst emoji
-          megaOpacity.setValue(0); megaScale.setValue(0);
-          Animated.parallel([
-            Animated.spring(megaScale,   { toValue: 1, friction: 2, tension: 150, useNativeDriver: true }),
-            Animated.timing(megaOpacity, { toValue: 1, duration: 60, useNativeDriver: true }),
-          ]).start();
-          setTimeout(() => Animated.timing(megaOpacity, { toValue: 0, duration: 500, useNativeDriver: true }).start(), 500);
-
-          // Winner color flash
-          Animated.sequence([
-            Animated.timing(colorFlash, { toValue: 1, duration: 80,  useNativeDriver: true }),
-            Animated.timing(colorFlash, { toValue: 0, duration: 500, useNativeDriver: true }),
-          ]).start();
-
-          // Loser HP → 0
-          Animated.timing(loserHP, { toValue: 0, duration: 600, useNativeDriver: true }).start();
-
-          // Loser KO: fly + tilt + fade
-          const loserHitX = won ? theirHitX  : myHitX;
-          const loserOpac = won ? theirOpacity : myOpacity;
-          const loserTilt = won ? theirTilt   : myTilt;
-          Animated.parallel([
-            Animated.timing(loserHitX, { toValue: winnerDir * 60, duration: 400, useNativeDriver: true }),
-            Animated.timing(loserTilt, { toValue: winnerDir * 25, duration: 400, useNativeDriver: true }),
-            Animated.timing(loserOpac, { toValue: 0.15, duration: 600, useNativeDriver: true }),
-          ]).start();
-
-          flash(0.9, 80);
-
-          // Winner victory bounce
-          T(700, () => {
-            setPhase('victory');
-            Animated.loop(Animated.sequence([
-              Animated.spring(winnerScale, { toValue: 1.15, friction: 4, useNativeDriver: true }),
-              Animated.spring(winnerScale, { toValue: 1,    friction: 4, useNativeDriver: true }),
-            ]), { iterations: 4 }).start();
-          });
-
-          // Result reveal
-          T(1600, () => {
-            setShowResult(true);
-            Animated.parallel([
-              Animated.timing(resultOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-              Animated.spring(resultY,       { toValue: 0, friction: 6,   useNativeDriver: true }),
+        // KO check (if someone drops to 0)
+        if (isLast || rd.challengerHP <= 0 || rd.defenderHP <= 0) {
+          T(3500, () => {
+            // Color flash
+            Animated.sequence([
+              Animated.timing(colorFlash, { toValue: 1, duration: 80, useNativeDriver: true }),
+              Animated.timing(colorFlash, { toValue: 0, duration: 500, useNativeDriver: true }),
             ]).start();
+
+            // Loser KO animation
+            const loserHitX = won ? theirHitX : myHitX;
+            const loserOpac = won ? theirOpacity : myOpacity;
+            const loserTilt = won ? theirTilt : myTilt;
+            const dir = won ? 1 : -1;
+            Animated.parallel([
+              Animated.timing(loserHitX, { toValue: dir * 60, duration: 400, useNativeDriver: true }),
+              Animated.timing(loserTilt, { toValue: dir * 25, duration: 400, useNativeDriver: true }),
+              Animated.timing(loserOpac, { toValue: 0.15, duration: 600, useNativeDriver: true }),
+            ]).start();
+            flash(0.9, 80);
+
+            // Winner victory bounce
+            T(700, () => {
+              setPhase('victory');
+              Animated.loop(Animated.sequence([
+                Animated.spring(winnerScale, { toValue: 1.15, friction: 4, useNativeDriver: true }),
+                Animated.spring(winnerScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+              ]), { iterations: 4 }).start();
+            });
+
+            // Result reveal
+            T(1500, () => {
+              setShowResult(true);
+              Animated.parallel([
+                Animated.timing(resultOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+                Animated.spring(resultY, { toValue: 0, friction: 6, useNativeDriver: true }),
+              ]).start();
+            });
           });
-        }, true /* isMega */);
-      });
-    }));
+        }
+      }));
+
+      // Each round takes ~4.5 seconds, final round takes ~6 seconds
+      return startTime + (isLast ? 6500 : 4500);
+    };
+
+    let time = 1600;
+    for (let i = 0; i < rounds.length; i++) {
+      time = animateRound(i, time);
+    }
   }, [open]);
 
-  const myMove    = CLASS_MOVES[me?.avatarClass]     || CLASS_MOVES.ROOKIE;
-  const theirMove = CLASS_MOVES[target?.avatarClass] || CLASS_MOVES.ROOKIE;
-  const mySupps   = (me?.activeSupplements || []).map(i => SUPP_ICONS[i.shopItem?.category]).filter(Boolean);
+  const myMove = CLASS_MOVES[me?.avatarClass] || CLASS_MOVES.ROOKIE;
+  const mySupps = (me?.activeSupplements || []).map(i => SUPP_ICONS[i.shopItem?.category]).filter(Boolean);
 
   return (
     <Modal visible={open} animationType="fade" transparent statusBarTranslucent>
       <View style={b.backdrop}>
-
-        {/* ── White flash ── */}
         <Animated.View style={[b.flash, { opacity: flashOpacity, backgroundColor: '#fff' }]} pointerEvents="none" />
-
-        {/* ── Winner color flash ── */}
         <Animated.View style={[b.flash, { opacity: colorFlash, backgroundColor: winnerGlow }]} pointerEvents="none" />
-
-        {/* ── Final-round dark overlay ── */}
         <Animated.View style={[b.flash, { opacity: darkOverlay, backgroundColor: '#000' }]} pointerEvents="none" />
 
-        <LinearGradient colors={['#080010', '#040008', '#000308']} style={b.screen}>
+        <LinearGradient colors={[colors.background, '#E8E3D8', '#DDD8CD']} style={b.screen}>
 
-          {/* ── HP Bars ── */}
+          {/* HP Bars */}
           {showHP && (
             <View style={b.hpSection}>
               <View style={b.hpRow}>
@@ -547,10 +687,10 @@ function BattleModal({ open, result, me, target, onClose }) {
             </View>
           )}
 
-          {/* ── Arena ── */}
+          {/* Arena */}
           <Animated.View style={[b.arena, { transform: [{ translateX: shakeX }] }]}>
 
-            {/* ─ ME ─ */}
+            {/* ME */}
             <Animated.View style={[b.fighterSlot, {
               transform: [
                 { translateX: Animated.add(Animated.add(myX, myLunge), myHitX) },
@@ -559,49 +699,36 @@ function BattleModal({ open, result, me, target, onClose }) {
               ],
               opacity: myOpacity,
             }]}>
-              {/* Magic circle (SVG) — behind everything */}
-              <MagicCircle color={myGlow} size={170} visible={showMagicMe} />
-
-              {/* Aura glow circle */}
+              <MagicCircle color={myGlow} size={130} visible={showMagicMe} />
               <Animated.View style={[b.auraGlow, {
-                backgroundColor: myGlow + '44',
-                opacity: myChargeOpacity,
+                backgroundColor: myGlow + '44', opacity: myChargeOpacity,
                 transform: [{ scale: myChargeScale }],
                 shadowColor: myGlow, shadowRadius: 30, shadowOpacity: 1,
               }]} />
-
-              {/* Ambient floating particles */}
               {showAmbientMe && <AmbientParticles emoji={myEmoji} count={5} />}
-
-              <AvatarSprite avatarClass={me?.avatarClass} bodyStage={me?.avatarBodyStage} size={95} flip={false} glowColor={myGlow} idle={phase === 'enter'} />
+              <AvatarSprite avatarClass={me?.avatarClass} bodyStage={me?.avatarBodyStage} size={80} flip={false} glowColor={myGlow} idle={phase === 'enter'} />
               <Text style={[b.fighterName, { color: myGlow }]} numberOfLines={1}>{me?.name}</Text>
               {mySupps.length > 0 && <Text style={b.supps}>{mySupps.join(' ')}</Text>}
               {phase === 'victory' && won && <Text style={b.crownBadge}>👑</Text>}
+              {/* Damage floats */}
+              {dmgFloats.filter(d => d.side === 'me').map(d => (
+                <DamageFloat key={d.id} value={d.value} color={d.color} heal={d.heal} />
+              ))}
             </Animated.View>
 
-            {/* ─ CENTER: impacts + effects ─ */}
+            {/* CENTER */}
             <View style={b.centerCol} pointerEvents="none">
-              {/* Round text */}
               <Animated.Text style={[b.roundText, { opacity: roundOpacity, transform: [{ scale: roundScale }] }]}>
                 {roundText}
               </Animated.Text>
-              {/* Normal impact emoji */}
               <Animated.Text style={[b.impactEmoji, { opacity: impactOpacity, transform: [{ scale: impactScale }] }]}>
                 💥
               </Animated.Text>
-              {/* Mega impact emoji */}
-              <Animated.Text style={[b.megaEmoji, { opacity: megaOpacity, transform: [{ scale: megaScale }] }]}>
-                {winnerSpecial.emoji}
-              </Animated.Text>
-              {/* Particle explosion — normal hits */}
-              <ParticleExplosion trigger={impactKey} colors={impactSparks} count={36} />
-              {/* Particle explosion — mega hit (more particles, all spark colors) */}
-              <ParticleExplosion trigger={megaKey}   colors={impactSparks} count={60} />
-              {/* Shockwave rings */}
+              <ParticleExplosion trigger={impactKey} colors={[...mySparks, ...theirSparks]} count={36} />
               <ShockWave trigger={shockKey} color={winnerGlow} />
             </View>
 
-            {/* ─ OPPONENT ─ */}
+            {/* OPPONENT */}
             <Animated.View style={[b.fighterSlot, {
               transform: [
                 { translateX: Animated.add(Animated.add(theirX, theirLunge), theirHitX) },
@@ -610,36 +737,33 @@ function BattleModal({ open, result, me, target, onClose }) {
               ],
               opacity: theirOpacity,
             }]}>
-              <MagicCircle color={theirGlow} size={170} visible={showMagicThem} />
-
+              <MagicCircle color={theirGlow} size={130} visible={showMagicThem} />
               <Animated.View style={[b.auraGlow, {
-                backgroundColor: theirGlow + '44',
-                opacity: theirChargeOpacity,
+                backgroundColor: theirGlow + '44', opacity: theirChargeOpacity,
                 transform: [{ scale: theirChargeScale }],
                 shadowColor: theirGlow, shadowRadius: 30, shadowOpacity: 1,
               }]} />
-
               {showAmbientThem && <AmbientParticles emoji={theirEmoji} count={5} />}
-
-              <AvatarSprite avatarClass={target?.avatarClass} bodyStage={target?.avatarBodyStage} size={95} flip={true} glowColor={theirGlow} idle={phase === 'enter'} />
+              <AvatarSprite avatarClass={target?.avatarClass} bodyStage={target?.avatarBodyStage} size={80} flip={true} glowColor={theirGlow} idle={phase === 'enter'} />
               <Text style={[b.fighterName, { color: theirGlow }]} numberOfLines={1}>{target?.name}</Text>
               {phase === 'victory' && !won && <Text style={b.crownBadge}>👑</Text>}
+              {dmgFloats.filter(d => d.side === 'them').map(d => (
+                <DamageFloat key={d.id} value={d.value} color={d.color} heal={d.heal} />
+              ))}
             </Animated.View>
 
           </Animated.View>
 
-          {/* ── Special move name ── */}
+          {/* Move name banner */}
           <Animated.View style={[b.moveNameWrap, { opacity: moveNameOpacity, transform: [{ scale: moveNameScale }] }]}>
-            <Text style={[b.moveNameText, { color: winnerSpecial.color, textShadowColor: winnerSpecial.color }]}>
-              {moveName}
-            </Text>
+            <Text style={b.moveNameText}>{moveName}</Text>
           </Animated.View>
 
-          {/* ── Result ── */}
+          {/* Result */}
           {showResult && (
             <Animated.View style={[b.resultBox, { opacity: resultOpacity, transform: [{ translateY: resultY }] }]}>
-              <Text style={[b.resultTitle, { color: won ? '#fff' : '#555', textShadowColor: won ? winnerGlow : 'transparent' }]}>
-                {won ? 'VICTORY' : 'DEFEATED'}
+              <Text style={[b.resultTitle, { color: won ? colors.textPrimary : colors.textMuted, textShadowColor: won ? winnerGlow : 'transparent' }]}>
+                {won ? 'VICTORIA' : 'DERROTA'}
               </Text>
               {won ? (
                 <View style={b.rewardsRow}>
@@ -647,19 +771,19 @@ function BattleModal({ open, result, me, target, onClose }) {
                     <Text style={[b.rewardVal, { color: '#D4AF37' }]}>+{result?.gcEarned || 0}</Text>
                     <Text style={b.rewardLbl}>GAINS</Text>
                   </View>
-                  <View style={[b.rewardPill, { borderColor: colors.primary + '44' }]}>
-                    <Text style={[b.rewardVal, { color: colors.primary }]}>+{result?.xpEarned || 0}</Text>
-                    <Text style={b.rewardLbl}>POWER</Text>
+                  <View style={[b.rewardPill, { borderColor: colors.power + '30' }]}>
+                    <Text style={[b.rewardVal, { color: colors.power }]}>+{result?.xpEarned || 0}</Text>
+                    <Text style={b.rewardLbl}>PODER</Text>
                   </View>
                 </View>
               ) : (
-                <Text style={b.motto}>Keep training. Come back stronger.</Text>
+                <Text style={b.motto}>Seguí entrenando. Volvé más fuerte.</Text>
               )}
               <Pressable
-                style={[b.closeBtn, { backgroundColor: won ? colors.primary : '#111', borderColor: won ? colors.primary : '#333' }]}
+                style={[b.closeBtn, { backgroundColor: won ? colors.accent : colors.cardLight, borderColor: won ? colors.accent : colors.border }]}
                 onPress={onClose}
               >
-                <Text style={b.closeBtnText}>{won ? 'CLAIM VICTORY' : 'WALK AWAY'}</Text>
+                <Text style={[b.closeBtnText, { color: won ? '#fff' : colors.textPrimary }]}>{won ? 'RECLAMAR VICTORIA' : 'VOLVER'}</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -680,18 +804,21 @@ export default function BattleScreen() {
   const [fighting, setFighting]             = useState(false);
   const [battleState, setBattleState]       = useState({ open: false, result: null, target: null });
   const [battlesRemaining, setBattlesRemaining] = useState(null);
+  const [monthlyAthletes, setMonthlyAthletes] = useState([]);
 
   const load = async () => {
     if (!user?.gymId || !user?.id) return;
     setLoading(true);
     try {
-      const [membersRes, , remainingRes] = await Promise.all([
+      const [membersRes, , remainingRes, monthlyRes] = await Promise.all([
         apiService.getGymMembers(user.gymId),
         loadHistory(user.id),
         apiService.getBattlesRemaining(),
+        apiService.getMonthlyAthletes(user.gymId).catch(() => ({ data: [] })),
       ]);
       setMembers((membersRes.data || []).filter(m => m.id && m.id !== user.id));
       setBattlesRemaining(remainingRes.data);
+      setMonthlyAthletes(monthlyRes.data || []);
     } catch (e) {
       Alert.alert('Battle', e.message);
     } finally {
@@ -701,13 +828,14 @@ export default function BattleScreen() {
 
   useEffect(() => { load(); }, [user?.id]);
 
-  const onFight = async () => {
+  const onFight = async (moves) => {
     if (!challengeTarget) return;
     try {
       setFighting(true);
-      const result = await challenge(challengeTarget.id);
+      const result = await challenge(challengeTarget.id, moves);
+      const target = challengeTarget;
       setChallengeTarget(null);
-      setBattleState({ open: true, result, target: challengeTarget });
+      setBattleState({ open: true, result, target });
     } catch (e) {
       Alert.alert('Battle', e.message);
     } finally {
@@ -722,8 +850,8 @@ export default function BattleScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-        <Ionicons name="flash" size={24} color="#fff" />
-        <Text style={styles.title}>BATTLE</Text>
+        <Ionicons name="flash" size={24} color={colors.textPrimary} />
+        <Text style={styles.title}>BATALLA</Text>
         {battlesRemaining != null && (
           <View style={styles.remainingBadge}>
             <Text style={[styles.remainingText, battlesRemaining.remaining === 0 && { color: '#555' }]}>
@@ -733,7 +861,7 @@ export default function BattleScreen() {
         )}
       </View>
       <Text style={styles.subtitle}>
-        {battlesRemaining?.remaining === 0 ? 'No battles left this week' : 'Challenge a gym member'}
+        {battlesRemaining?.remaining === 0 ? 'No te quedan peleas esta semana' : 'Elegí un rival y armá tu estrategia'}
       </Text>
 
       <FlatList
@@ -742,30 +870,73 @@ export default function BattleScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="shield-outline" size={40} color="#333" />
-            <Text style={styles.empty}>No opponents in your gym yet.</Text>
+            <Ionicons name="shield-outline" size={40} color={colors.textDim} />
+            <Text style={styles.empty}>No hay rivales en tu gym todavía.</Text>
           </View>
         }
         ListFooterComponent={
-          battleHistory.length > 0 ? (
-            <View style={{ marginTop: 24 }}>
-              <Text style={styles.subTitle}>BATTLE HISTORY</Text>
-              {battleHistory.map((h, idx) => (
-                <View key={`${h.opponentName}-${idx}`} style={styles.historyRow}>
-                  <Text style={styles.historyName}>{h.opponentName}</Text>
-                  <View style={[styles.resultBadge, {
-                    backgroundColor:  h.result === 'won' ? '#0e3320' : '#1a0000',
-                    borderColor:      h.result === 'won' ? '#22C55E33' : '#CC000033',
-                  }]}>
-                    <Text style={[styles.historyResult, { color: h.result === 'won' ? '#22C55E' : '#CC4444' }]}>
-                      {h.result === 'won' ? 'WON' : 'LOST'}
-                    </Text>
+          <>
+            {battleHistory.length > 0 && (
+              <View style={{ marginTop: 24 }}>
+                <Text style={styles.subTitle}>HISTORIAL DE PELEAS</Text>
+                {battleHistory.map((h, idx) => (
+                  <View key={`${h.opponentName}-${idx}`} style={styles.historyRow}>
+                    <Text style={styles.historyName}>{h.opponentName}</Text>
+                    <View style={[styles.resultBadge, {
+                      backgroundColor: h.result === 'won' ? '#22C55E12' : '#CC000010',
+                      borderColor: h.result === 'won' ? '#22C55E30' : '#CC000025',
+                    }]}>
+                      <Text style={[styles.historyResult, { color: h.result === 'won' ? '#22C55E' : '#CC4444' }]}>
+                        {h.result === 'won' ? 'GANO' : 'PERDIO'}
+                      </Text>
+                    </View>
+                    <Text style={styles.historyDate}>{new Date(h.createdAt).toLocaleDateString()}</Text>
                   </View>
-                  <Text style={styles.historyDate}>{new Date(h.createdAt).toLocaleDateString()}</Text>
+                ))}
+              </View>
+            )}
+            {monthlyAthletes.length > 0 && (
+              <View style={{ marginTop: 28 }}>
+                <View style={styles.monthlyHeader}>
+                  <View style={styles.monthlyLine} />
+                  <Ionicons name="trophy" size={14} color="#D4AF37" />
+                  <Text style={styles.monthlyLabel}>ATLETA DEL MES</Text>
+                  <Ionicons name="trophy" size={14} color="#D4AF37" />
+                  <View style={styles.monthlyLine} />
                 </View>
-              ))}
-            </View>
-          ) : null
+                {monthlyAthletes.map((a, idx) => {
+                  const isFirst = idx === 0;
+                  const medalColor = idx < 3 ? ['#D4AF37', '#A8A9AD', '#CD7F32'][idx] : null;
+                  return (
+                    <View key={a.id} style={[styles.athleteRow, isFirst && styles.athleteFirst]}>
+                      <View style={{ width: 26, alignItems: 'center' }}>
+                        {medalColor ? (
+                          <View style={[styles.athleteMedal, { borderColor: medalColor, backgroundColor: medalColor + '18' }]}>
+                            <Text style={[styles.athleteMedalNum, { color: medalColor }]}>{idx + 1}</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.athletePos}>{idx + 1}</Text>
+                        )}
+                      </View>
+                      <AvatarCircle name={a.name} avatarClass={a.avatarClass} bodyStage={a.avatarBodyStage} profilePhoto={a.profilePhoto} size="small" />
+                      <View style={{ flex: 1, marginLeft: 4 }}>
+                        <Text style={styles.athleteName}>{a.name}</Text>
+                        <View style={{ flexDirection: 'row', gap: 6, marginTop: 2 }}>
+                          {a.gold > 0 && <Text style={styles.athleteStat}>🥇{a.gold}</Text>}
+                          {a.silver > 0 && <Text style={styles.athleteStat}>🥈{a.silver}</Text>}
+                          {a.bronze > 0 && <Text style={styles.athleteStat}>🥉{a.bronze}</Text>}
+                        </View>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={[styles.athleteScore, medalColor && { color: medalColor }]}>{a.score}</Text>
+                        <Text style={styles.athleteUnit}>PTS</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </>
         }
         renderItem={({ item }) => {
           const move = CLASS_MOVES[item.avatarClass] || CLASS_MOVES.ROOKIE;
@@ -782,37 +953,27 @@ export default function BattleScreen() {
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.memberName}>{item.name}</Text>
                 <Text style={[styles.moveName, { color: move.color }]}>{move.icon} {move.name}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                    <Ionicons name="barbell" size={11} color="#FF6B35" />
-                    <Text style={styles.memberMeta}>{item.statMuscle}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                    <Ionicons name="flash" size={11} color="#3B82F6" />
-                    <Text style={styles.memberMeta}>{item.statPower}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                    <Ionicons name="shield" size={11} color="#22C55E" />
-                    <Text style={styles.memberMeta}>{item.statEndurance}</Text>
-                  </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                  <Ionicons name="flash" size={12} color="#3B82F6" />
+                  <Text style={styles.memberMeta}>PWR: {item.statPower}</Text>
                 </View>
               </View>
               <AnimatedPressable
-                style={[styles.fightBtn, { borderColor: noBattles ? '#222' : move.color }]}
+                style={[styles.fightBtn, { borderColor: noBattles ? colors.border : move.color }]}
                 onPress={() => !noBattles && setChallengeTarget(item)}
                 haptic="medium"
                 scaleDown={0.92}
                 disabled={noBattles}
               >
-                <Text style={[styles.fightText, { color: noBattles ? '#333' : move.color }]}>FIGHT</Text>
+                <Text style={[styles.fightText, { color: noBattles ? colors.textDim : move.color }]}>PELEAR</Text>
               </AnimatedPressable>
             </View>
           );
         }}
       />
 
-      <ChallengeModal
-        open={!!challengeTarget}
+      <MovePickerModal
+        visible={!!challengeTarget}
         target={challengeTarget}
         me={user}
         fighting={fighting}
@@ -837,73 +998,70 @@ export default function BattleScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: colors.background, paddingHorizontal: 14 },
-  title:        { color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: 1 },
-  subtitle:     { color: '#444', fontSize: 13, marginBottom: 16, marginTop: 2 },
-  subTitle:     { color: '#444', fontWeight: '800', fontSize: 11, marginBottom: 10, letterSpacing: 1.2, textTransform: 'uppercase' },
+  container:    { flex: 1, backgroundColor: colors.background, paddingHorizontal: 16 },
+  title:        { color: colors.textPrimary, fontSize: 32, fontFamily: fonts.heading, letterSpacing: 2 },
+  subtitle:     { color: colors.textMuted, fontSize: 13, marginBottom: 16, marginTop: 2 },
+  subTitle:     { color: colors.textMuted, fontWeight: '700', fontSize: 11, marginBottom: 10, letterSpacing: 2, textTransform: 'uppercase' },
   emptyWrap:    { alignItems: 'center', marginTop: 60, gap: 10 },
-  emptyIcon:    { fontSize: 40 },
-  empty:        { color: '#444', fontSize: 14 },
-  memberRow:    { backgroundColor: '#111', borderWidth: 1, borderColor: '#1E1E1E', borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 8, overflow: 'hidden' },
-  memberName:   { color: '#fff', fontWeight: '700', fontSize: 14 },
+  empty:        { color: colors.textMuted, fontSize: 14 },
+  memberRow:    { backgroundColor: colors.cardLight, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 8, overflow: 'hidden' },
+  memberName:   { color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
   moveName:     { fontSize: 11, fontWeight: '700', marginTop: 2 },
-  memberMeta:   { color: '#555', fontSize: 11, marginTop: 3 },
-  fightBtn:     { borderWidth: 1.5, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 14, backgroundColor: 'transparent' },
+  memberMeta:   { color: colors.textMuted, fontSize: 11, marginTop: 3 },
+  fightBtn:     { borderWidth: 1.5, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 14, backgroundColor: 'transparent' },
   fightText:    { fontWeight: '900', fontSize: 12 },
-  historyRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, backgroundColor: '#111', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#1E1E1E' },
-  historyName:  { color: '#fff', flex: 1, fontSize: 13 },
-  resultBadge:  { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
+  historyRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, backgroundColor: colors.cardLight, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: colors.border },
+  historyName:  { color: colors.textPrimary, flex: 1, fontSize: 13 },
+  resultBadge:  { paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderRadius: 6 },
   historyResult:{ fontWeight: '800', fontSize: 12 },
-  historyDate:  { color: '#444', fontSize: 11, marginLeft: 8 },
-  remainingBadge: { marginLeft: 'auto', backgroundColor: '#1a0000', borderRadius: 8, borderWidth: 1, borderColor: colors.primary + '33', paddingHorizontal: 10, paddingVertical: 4 },
-  remainingText:  { color: colors.primary, fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
-});
-
-const c = StyleSheet.create({
-  backdrop:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  card:        { width: '100%', borderRadius: 18, overflow: 'hidden' },
-  inner:       { padding: 24, alignItems: 'center' },
-  titleTop:    { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 4 },
-  fightersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 20 },
-  fighterSide: { flex: 1, alignItems: 'center', gap: 6 },
-  vsCol:       { width: 40, alignItems: 'center' },
-  vsText:      { color: colors.primary, fontSize: 26, fontWeight: '900', textShadowColor: colors.primary, textShadowRadius: 14, textShadowOffset: { width: 0, height: 0 } },
-  fighterName: { color: '#fff', fontWeight: '800', fontSize: 12, textAlign: 'center' },
-  moveLabel:   { fontSize: 10, fontWeight: '700', textAlign: 'center' },
-  rewardHint:  { color: '#777', fontSize: 12, marginBottom: 22 },
-  fightBtn:    { width: '100%', borderRadius: radius.button, overflow: 'hidden', marginBottom: 10 },
-  fightBtnGrad:{ paddingVertical: 15, alignItems: 'center' },
-  fightBtnText:{ color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 2 },
-  backBtn:     { paddingVertical: 10 },
-  backBtnText: { color: '#555', fontWeight: '600', fontSize: 13 },
+  historyDate:  { color: colors.textMuted, fontSize: 11, marginLeft: 8 },
+  remainingBadge: { marginLeft: 'auto', backgroundColor: colors.accent + '10', borderWidth: 1, borderColor: colors.accent + '25', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  remainingText:  { color: colors.accent, fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
+  // Monthly athlete styles
+  monthlyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  monthlyLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  monthlyLabel: { color: '#D4AF37', fontWeight: '900', fontSize: 10, letterSpacing: 1.5 },
+  athleteRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.cardLight, borderRadius: 8,
+    borderWidth: 1, borderColor: colors.border,
+    paddingVertical: 10, paddingHorizontal: 10, marginBottom: 6,
+  },
+  athleteFirst: { borderColor: '#D4AF37', borderWidth: 1.5 },
+  athleteMedal: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  athleteMedalNum: { fontWeight: '900', fontSize: 11 },
+  athletePos: { color: colors.textMuted, fontWeight: '800', fontSize: 13 },
+  athleteName: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+  athleteStat: { fontSize: 11 },
+  athleteScore: { color: colors.primary, fontWeight: '900', fontSize: 15 },
+  athleteUnit: { color: colors.textMuted, fontSize: 8, fontWeight: '700', letterSpacing: 0.5 },
 });
 
 const b = StyleSheet.create({
-  backdrop:     { flex: 1, backgroundColor: '#000' },
+  backdrop:     { flex: 1, backgroundColor: colors.background },
   flash:        { ...StyleSheet.absoluteFillObject, zIndex: 99 },
-  screen:       { flex: 1, paddingHorizontal: 16, justifyContent: 'space-evenly', paddingVertical: 24 },
-  hpSection:    { gap: 8, marginBottom: 4 },
+  screen:       { flex: 1, paddingHorizontal: 16, justifyContent: 'center', paddingVertical: 16 },
+  hpSection:    { gap: 8, marginBottom: 12 },
   hpRow:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
   hpName:       { width: 64, fontWeight: '900', fontSize: 11 },
-  arena:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', minHeight: 210, position: 'relative' },
-  fighterSlot:  { flex: 1, alignItems: 'center', position: 'relative' },
-  auraGlow:     { position: 'absolute', width: 140, height: 140, borderRadius: 70, top: 0, zIndex: 0 },
+  arena:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', position: 'relative', overflow: 'visible', marginVertical: 16 },
+  fighterSlot:  { flex: 1, alignItems: 'center', position: 'relative', overflow: 'visible' },
+  auraGlow:     { position: 'absolute', width: 120, height: 120, borderRadius: 60, alignSelf: 'center', zIndex: 0 },
   fighterName:  { fontWeight: '900', fontSize: 11, textAlign: 'center', marginTop: 4 },
   supps:        { fontSize: 12, letterSpacing: 2, marginTop: 2 },
   crownBadge:   { fontSize: 20, marginTop: 4 },
   centerCol:    { width: 90, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  roundText:    { color: '#fff', fontWeight: '900', fontSize: 13, textAlign: 'center', letterSpacing: 1, textShadowColor: '#fff', textShadowRadius: 8, textShadowOffset: { width: 0, height: 0 } },
+  roundText:    { color: colors.textPrimary, fontWeight: '900', fontSize: 13, textAlign: 'center', letterSpacing: 1, textShadowColor: colors.textMuted, textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 } },
   impactEmoji:  { fontSize: 44, position: 'absolute' },
-  megaEmoji:    { fontSize: 64, position: 'absolute', textShadowColor: '#fff', textShadowRadius: 20, textShadowOffset: { width: 0, height: 0 } },
-  moveNameWrap: { alignItems: 'center', minHeight: 36, justifyContent: 'center' },
-  moveNameText: { fontWeight: '900', fontSize: 18, letterSpacing: 2, textShadowRadius: 14, textShadowOffset: { width: 0, height: 0 } },
+  moveNameWrap: { alignItems: 'center', height: 36, justifyContent: 'center' },
+  moveNameText: { color: colors.textPrimary, fontWeight: '900', fontSize: 14, letterSpacing: 1, textAlign: 'center', textShadowColor: colors.textMuted, textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 } },
   resultBox:    { alignItems: 'center', gap: 12, paddingTop: 10 },
   resultTitle:  { fontSize: 32, fontWeight: '900', letterSpacing: 4, textShadowRadius: 20, textShadowOffset: { width: 0, height: 0 } },
   rewardsRow:   { flexDirection: 'row', gap: 12 },
-  rewardPill:   { backgroundColor: '#111', borderRadius: 12, borderWidth: 1, borderColor: '#D4AF3744', paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center', gap: 2 },
+  rewardPill:   { backgroundColor: colors.cardLight, borderWidth: 1, borderColor: colors.gold + '30', borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center', gap: 2 },
   rewardVal:    { fontWeight: '900', fontSize: 20 },
-  rewardLbl:    { color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  motto:        { color: '#444', fontSize: 13 },
-  closeBtn:     { borderWidth: 1, borderRadius: radius.button, paddingVertical: 14, paddingHorizontal: 44 },
-  closeBtnText: { color: '#fff', fontWeight: '900', letterSpacing: 2, fontSize: 14 },
+  rewardLbl:    { color: colors.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  motto:        { color: colors.textMuted, fontSize: 13 },
+  closeBtn:     { borderWidth: 1.5, borderRadius: 8, paddingVertical: 14, paddingHorizontal: 44 },
+  closeBtnText: { fontFamily: fonts.heading, letterSpacing: 3, fontSize: 18 },
 });

@@ -71,16 +71,16 @@ function buildPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', faceOptions = {}
   const outfit = 'wearing a red athletic tank top, black shorts, white sneakers';
 
   return [
-    `3D cartoon stylized full-body ${genderLabel} fitness character`,
+    `ONE single 3D cartoon stylized full-body ${genderLabel} fitness character, exactly one person, centered in frame`,
     'Pixar-inspired mobile game art style',
     'chibi proportions with oversized head and expressive face',
     build,
     face,
     outfit,
-    'standing in a confident pose',
-    'clean solid white background',
+    'standing in a confident pose, front-facing',
+    'clean solid pure black background (#000000), no reflections, no shadows on background',
     'smooth 3D render, vibrant colors, soft shadows',
-    'single character only, no duplicates, no text, no watermark',
+    'IMPORTANT: only ONE character, absolutely no duplicates, no copies, no mirrors, no text, no watermark',
   ].join('. ') + '.';
 }
 

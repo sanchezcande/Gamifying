@@ -38,32 +38,26 @@ async function consumeShieldIfNeeded(user, activeSupplements, tx = prisma) {
 
 function applyCheckinEffects(base, supplements) {
   let xpMultiplier = 1;
-  let muscleMultiplier = 1;
-  let enduranceMultiplier = 1;
   let powerMultiplier = 1;
 
   if (hasCategory(supplements, 'PROTEIN')) {
-    muscleMultiplier *= 1.2;
     powerMultiplier *= 1.3;
   }
   if (hasCategory(supplements, 'CREATINE')) {
     powerMultiplier *= 1.4;
-    muscleMultiplier *= 1.15;
   }
   if (hasCategory(supplements, 'PREWORKOUT')) {
     xpMultiplier *= 2;
   }
   if (hasCategory(supplements, 'AURA')) {
-    muscleMultiplier *= 1.1;
-    enduranceMultiplier *= 1.1;
     powerMultiplier *= 1.1;
   }
 
   return {
     xpEarned: Math.round(base.xpEarned * xpMultiplier),
     gcEarned: base.gcEarned,
-    muscleGained: Math.round(base.muscleGained * muscleMultiplier),
-    enduranceGained: Math.round(base.enduranceGained * enduranceMultiplier),
+    muscleGained: 0,
+    enduranceGained: 0,
     powerGained: Math.round(base.powerGained * powerMultiplier)
   };
 }

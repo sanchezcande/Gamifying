@@ -14,9 +14,10 @@ const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderDark,
     marginRight: 8
   },
-  text: { color: '#fff', fontWeight: '700', fontSize: 12 }
+  text: { color: colors.textOnDark, fontWeight: '700', fontSize: 12 }
 });

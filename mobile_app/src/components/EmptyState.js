@@ -21,5 +21,5 @@ const styles = StyleSheet.create({
   icon: { fontSize: 22, marginBottom: 6 },
   text: { color: colors.textSecondary, marginBottom: 8 },
   button: { backgroundColor: colors.primary, borderRadius: radius.button, paddingHorizontal: 12, paddingVertical: 8 },
-  btnText: { color: '#fff', fontWeight: '700' }
+  btnText: { color: colors.primaryOnDark, fontWeight: '700' }
 });

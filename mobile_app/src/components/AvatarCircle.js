@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { getInitials } from '../utils/avatar';
 import { colors } from '../theme/theme';
 
@@ -16,9 +16,11 @@ export default function AvatarCircle({ name, avatarClass, bodyStage, size = 'med
   const dimension = typeof size === 'number' ? size : (sizes[size] || sizes.medium);
   const borderColor = CLASS_BORDER[avatarClass] || '#444';
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(!!profilePhoto);
 
   useEffect(() => {
     setFailed(false);
+    setLoading(!!profilePhoto);
   }, [profilePhoto]);
 
   return (
@@ -43,16 +45,24 @@ export default function AvatarCircle({ name, avatarClass, bodyStage, size = 'med
           {getInitials(name)}
         </Text>
       ) : (
-        <Image
-          source={{ uri: profilePhoto }}
-          style={{
-            width: dimension,
-            height: dimension,
-            borderRadius: dimension / 2,
-          }}
-          resizeMode="cover"
-          onError={() => setFailed(true)}
-        />
+        <>
+          <Image
+            source={{ uri: profilePhoto }}
+            style={{
+              width: dimension,
+              height: dimension,
+              borderRadius: dimension / 2,
+            }}
+            resizeMode="cover"
+            onLoad={() => setLoading(false)}
+            onError={() => { setFailed(true); setLoading(false); }}
+          />
+          {loading && (
+            <View style={[StyleSheet.absoluteFill, styles.loadingOverlay]}>
+              <ActivityIndicator size={dimension > 60 ? 'large' : 'small'} color={colors.primary} />
+            </View>
+          )}
+        </>
       )}
     </View>
   );
@@ -64,5 +74,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#111',
     overflow: 'hidden'
+  },
+  loadingOverlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111',
+    borderRadius: 999,
   }
 });

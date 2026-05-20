@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { clearToken, getToken } from '../utils/storage';
 
-const BASE_URL = 'http://192.168.47.233:3000/api';
+const BASE_URL = 'http://10.10.43.110:3000/api';
 
 class ApiService {
   constructor() {
@@ -136,8 +136,8 @@ class ApiService {
     return this.unwrap(await this.client.get(`/battles/history/${userId}`));
   }
 
-  async challenge(defenderId) {
-    return this.unwrap(await this.client.post(`/battles/challenge/${defenderId}`));
+  async challenge(defenderId, moves) {
+    return this.unwrap(await this.client.post(`/battles/challenge/${defenderId}`, { moves }));
   }
 
   async getBattlesRemaining() {
@@ -182,6 +182,26 @@ class ApiService {
 
   async sendSessionMessage(sessionId, text) {
     return this.unwrap(await this.client.post(`/sessions/${sessionId}/messages`, { text }));
+  }
+
+  async sendFeedback(message) {
+    return this.unwrap(await this.client.post('/feedback', { message }));
+  }
+
+  async getFeedback(gymId) {
+    return this.unwrap(await this.client.get(`/feedback/${gymId}`));
+  }
+
+  async getTodayWod(gymId) {
+    return this.unwrap(await this.client.get(`/wods/today/${gymId}`));
+  }
+
+  async submitWodResults(wodId, results) {
+    return this.unwrap(await this.client.post(`/wods/${wodId}/results`, { results }));
+  }
+
+  async getMonthlyAthletes(gymId) {
+    return this.unwrap(await this.client.get(`/wods/monthly/${gymId}`));
   }
 }
 

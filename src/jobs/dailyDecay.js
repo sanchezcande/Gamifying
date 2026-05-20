@@ -46,8 +46,6 @@ async function runDailyDecay() {
     const avatar = getAvatarProgress({
       ...user,
       xp: decayed.xp,
-      statMuscle: decayed.statMuscle,
-      statEndurance: decayed.statEndurance,
       statPower: decayed.statPower
     });
     const shouldUpdateImage =

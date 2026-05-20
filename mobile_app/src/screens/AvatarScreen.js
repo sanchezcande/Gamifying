@@ -55,9 +55,7 @@ export default function AvatarScreen({ navigation }) {
       </LinearGradient>
 
       <View style={styles.row}>
-        <StatCard icon="💪" value={avatar.statMuscle} label="muscle" />
         <StatCard icon="⚡" value={avatar.statPower} label="power" />
-        <StatCard icon="🛡️" value={avatar.statEndurance} label="endurance" />
       </View>
 
       <View style={styles.section}>

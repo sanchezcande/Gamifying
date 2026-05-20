@@ -37,8 +37,8 @@ async function processCheckin(userId, method = 'QR') {
       xp: user.xp + gains.xpEarned,
       gymCoins: user.gymCoins + gains.gcEarned,
       currentMonthXp: user.currentMonthXp + gains.xpEarned,
-      statMuscle: user.statMuscle + gains.muscleGained,
-      statEndurance: user.statEndurance + gains.enduranceGained,
+      statMuscle: 0,
+      statEndurance: 0,
       statPower: user.statPower + gains.powerGained,
       visitStreak: nextStreak,
       lastVisitDate: new Date()

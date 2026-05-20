@@ -4,11 +4,10 @@ import {
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AnimatedPressable from '../components/AnimatedPressable';
 import { useAuth } from '../providers/AuthProvider';
-import { colors, radius } from '../theme/theme';
+import { colors, fonts, radius } from '../theme/theme';
 
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
@@ -49,7 +48,7 @@ export default function RegisterScreen({ navigation }) {
   ];
 
   return (
-    <LinearGradient colors={['#0A0A0A', '#110005', '#0A0A0A']} style={styles.flex}>
+    <View style={styles.flex}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView
           contentContainerStyle={[styles.container, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}
@@ -76,7 +75,7 @@ export default function RegisterScreen({ navigation }) {
             {fields.map((field) => (
               <View key={field.label} style={styles.fieldGroup}>
                 <View style={styles.labelRow}>
-                  <Ionicons name={field.iconName} size={14} color="#666" />
+                  <Ionicons name={field.iconName} size={14} color={colors.textMuted} />
                   <Text style={styles.label}>{field.label}</Text>
                 </View>
                 <TextInput
@@ -84,12 +83,14 @@ export default function RegisterScreen({ navigation }) {
                   value={field.value}
                   onChangeText={field.set}
                   autoCapitalize={field.type === 'email-address' ? 'none' : 'words'}
+                  autoComplete={field.type === 'email-address' ? 'email' : undefined}
+                  textContentType={field.type === 'email-address' ? 'emailAddress' : undefined}
                   keyboardType={field.type}
                   secureTextEntry={field.secure}
                   returnKeyType={field.next ? 'next' : 'done'}
                   onSubmitEditing={() => field.next ? field.next.current?.focus() : onSubmit()}
                   placeholder={field.placeholder}
-                  placeholderTextColor="#333"
+                  placeholderTextColor={colors.textDim}
                   style={styles.input}
                 />
               </View>
@@ -104,9 +105,7 @@ export default function RegisterScreen({ navigation }) {
               haptic="heavy"
               scaleDown={0.97}
             >
-              <LinearGradient colors={['#E00', '#900']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnGrad}>
-                <Text style={styles.btnText}>{submitting ? 'Creating account...' : 'Create Account'}</Text>
-              </LinearGradient>
+              <Text style={styles.btnText}>{submitting ? 'Creating account...' : 'Create Account'}</Text>
             </AnimatedPressable>
 
             <AnimatedPressable onPress={() => navigation.navigate('Login')} style={styles.linkRow} haptic="light">
@@ -116,52 +115,50 @@ export default function RegisterScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  flex: { flex: 1, backgroundColor: colors.background },
   container: { flexGrow: 1, paddingHorizontal: 24 },
   backBtn: { marginBottom: 16 },
-  backText: { color: '#555', fontSize: 14 },
+  backText: { color: colors.textSecondary, fontSize: 14 },
   brandBlock: { alignItems: 'center', marginBottom: 28 },
   logoMark: {
-    width: 54, height: 54, borderRadius: 14,
+    width: 54, height: 54, borderRadius: radius.card,
     backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 10,
-    shadowColor: colors.primary, shadowRadius: 16, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 },
   },
-  logoLetter: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  brandName:  { color: '#fff', fontSize: 20, fontWeight: '900', letterSpacing: 4 },
+  logoLetter: { color: colors.primaryOnDark, fontSize: 28, fontFamily: fonts.heading },
+  brandName:  { color: colors.textPrimary, fontSize: 20, fontFamily: fonts.heading, letterSpacing: 4 },
   form: {
-    backgroundColor: '#111',
-    borderRadius: 20,
+    backgroundColor: colors.cardLight,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: '#1E1E1E',
+    borderColor: colors.border,
     padding: 24,
   },
-  formTitle: { color: '#fff', fontSize: 22, fontWeight: '800', marginBottom: 4 },
-  formSub:   { color: '#555', fontSize: 13, marginBottom: 22 },
+  formTitle: { color: colors.textPrimary, fontSize: 22, fontFamily: fonts.heading, marginBottom: 4 },
+  formSub:   { color: colors.textMuted, fontSize: 13, marginBottom: 22 },
   fieldGroup: { marginBottom: 14 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 7 },
-  label: { color: '#666', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
+  label: { color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
   input: {
-    backgroundColor: '#0D0D0D',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#222',
-    color: '#fff',
+    borderColor: colors.border,
+    color: colors.textPrimary,
     borderRadius: radius.card,
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
   },
-  error: { color: '#ff4444', fontSize: 13, marginBottom: 12, textAlign: 'center' },
-  btn: { borderRadius: 14, overflow: 'hidden', marginTop: 6 },
-  btnGrad: { paddingVertical: 15, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
+  error: { color: colors.danger, fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  btn: { borderRadius: radius.button, overflow: 'hidden', marginTop: 6, backgroundColor: colors.primary, paddingVertical: 15, alignItems: 'center' },
+  btnText: { color: colors.primaryOnDark, fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },
   linkRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  linkMuted: { color: '#555', fontSize: 14 },
-  linkAccent: { color: colors.primary, fontWeight: '700', fontSize: 14 },
+  linkMuted: { color: colors.textMuted, fontSize: 14 },
+  linkAccent: { color: colors.accent, fontWeight: '700', fontSize: 14 },
 });

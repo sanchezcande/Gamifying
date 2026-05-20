@@ -1,11 +1,12 @@
 const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
-const { calculateProbabilities, rollWinner } = require('../services/battleService');
+const { calculateProbabilities, resolveBattle, pickAIMoves, validateMoves, SUPPLEMENT_MOVES } = require('../services/battleService');
+const { getActiveSupplements } = require('../services/supplementService');
 const { getAvatarProgress } = require('../services/avatarService');
 const { buildAvatarUrlForUser } = require('../services/avatarImageService');
 const { enqueueAvatarRender } = require('../services/avatarRenderQueue');
 
-const WEEKLY_BATTLE_LIMIT = 2;
+const WEEKLY_BATTLE_LIMIT = 999;
 
 function getWeekStart() {
   const now = new Date();
@@ -57,7 +58,27 @@ async function challenge(req, res) {
 
     const rewards = { gcReward: 50, xpReward: 30 };
     const { challengerProbability, defenderProbability } = calculateProbabilities(challenger, defender);
-    const winnerId = rollWinner(challenger, defender, challengerProbability);
+
+    // Get active supplements for both players
+    const [challengerSupps, defenderSupps] = await Promise.all([
+      getActiveSupplements(challenger.id),
+      getActiveSupplements(defender.id),
+    ]);
+    const challengerCategories = challengerSupps.map(s => s.shopItem.category);
+    const defenderCategories = defenderSupps.map(s => s.shopItem.category);
+
+    // Validate challenger moves (from request body) or fall back to AI
+    let challengerMoves = req.body?.moves;
+    if (!challengerMoves || !validateMoves(challengerMoves, challengerCategories)) {
+      challengerMoves = pickAIMoves(challenger, challengerCategories);
+    }
+
+    // Defender is always AI for now (MVP)
+    const defenderMoves = pickAIMoves(defender, defenderCategories);
+
+    // Resolve battle round by round
+    const battleResolution = resolveBattle(challenger, defender, challengerMoves, defenderMoves);
+    const winnerId = battleResolution.winnerId;
 
     const battleResult = await prisma.$transaction(async (tx) => {
       await tx.battle.create({
@@ -119,7 +140,10 @@ async function challenge(req, res) {
       defenderProbability,
       winnerId,
       gcEarned: rewards.gcReward,
-      xpEarned: rewards.xpReward
+      xpEarned: rewards.xpReward,
+      rounds: battleResolution.rounds,
+      challengerMoves,
+      defenderMoves,
     });
   } catch (error) {
     return fail(res, 500, error.message);

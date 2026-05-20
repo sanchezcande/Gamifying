@@ -56,6 +56,7 @@ model User {
   sessionMessages    SessionMessage[]
   gym                Gym?             @relation("GymMembers", fields: [gymId], references: [id])
   userItems          UserItem[]
+  wodResults         WodResult[]
 }
 
 model Gym {
@@ -74,6 +75,8 @@ model Gym {
   gymSessions  GymSession[]
   purchases    Purchase[]
   members      User[]        @relation("GymMembers")
+  feedbacks    GymFeedback[]
+  wods         Wod[]
 }
 
 model CheckIn {
@@ -249,6 +252,63 @@ model AvatarRenderMetric {
   failed    Int      @default(0)
   totalMs   Int      @default(0)
   updatedAt DateTime @updatedAt
+}
+
+model GymFeedback {
+  id        String   @id @default(cuid())
+  gymId     String
+  gym       Gym      @relation(fields: [gymId], references: [id])
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Wod {
+  id          String        @id @default(cuid())
+  gymId       String
+  name        String
+  description String?
+  date        DateTime
+  scoreType   WodScoreType  @default(WEIGHT)
+  createdAt   DateTime      @default(now())
+  gym         Gym           @relation(fields: [gymId], references: [id])
+  exercises   WodExercise[]
+  results     WodResult[]
+
+  @@unique([gymId, date])
+  @@index([gymId, date])
+}
+
+model WodExercise {
+  id         String      @id @default(cuid())
+  wodId      String
+  name       String
+  targetReps String?
+  order      Int
+  wod        Wod         @relation(fields: [wodId], references: [id])
+  results    WodResult[]
+
+  @@index([wodId])
+}
+
+model WodResult {
+  id         String      @id @default(cuid())
+  wodId      String
+  exerciseId String
+  userId     String
+  value      Float
+  createdAt  DateTime    @default(now())
+  wod        Wod         @relation(fields: [wodId], references: [id])
+  exercise   WodExercise @relation(fields: [exerciseId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+
+  @@unique([wodId, exerciseId, userId])
+  @@index([wodId, userId])
+}
+
+enum WodScoreType {
+  WEIGHT
+  TIME
+  REPS
 }
 
 enum AvatarClass {

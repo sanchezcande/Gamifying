@@ -109,18 +109,9 @@ async function createAvatar(req, res) {
     };
 
     const avatarClass = getAvatarClass(req.user.xp);
-    const avatarBodyStage = getBodyStage(req.user.statMuscle + req.user.statEndurance + req.user.statPower);
+    const avatarBodyStage = getBodyStage(req.user.statPower || 0);
 
-    // Save avatar immediately with fallback image, respond fast
-    const fallbackPhoto = buildAvatarImageUrl({
-      name: req.user.name,
-      avatarClass,
-      gender,
-      faceOptions,
-      imageVariant,
-      bodyStage: avatarBodyStage
-    });
-
+    // Save avatar immediately with no photo — DALL-E generates in background
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: {
@@ -128,7 +119,7 @@ async function createAvatar(req, res) {
         faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
         faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
         faceBeardId, faceEyebrowId, faceEyebrowColorId,
-        profilePhoto: fallbackPhoto,
+        profilePhoto: null,
         avatarClass,
         avatarBodyStage
       }

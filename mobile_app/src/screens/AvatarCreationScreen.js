@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
   Easing,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -11,12 +13,20 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AnimatedPressable from '../components/AnimatedPressable';
 import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
-import { colors, gradients } from '../theme/theme';
+import { colors, fonts, radius as themeRadius } from '../theme/theme';
+import {
+  HAIR_PREVIEWS,
+  EYES_PREVIEWS,
+  NOSE_PREVIEWS,
+  BROWS_PREVIEWS,
+  BEARD_PREVIEWS,
+  JAW_PREVIEWS,
+  CHEEKS_PREVIEWS,
+} from '../assets/face';
 
 let Haptics;
 try { Haptics = require('expo-haptics'); } catch {}
@@ -156,7 +166,7 @@ function ColorSwatchRow({ title, swatches, selectedIndex, onSelect }) {
 
 const swatch = StyleSheet.create({
   container: { marginBottom: 16 },
-  title: { color: '#666', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  title: { color: colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   circle: {
     width: 42,
@@ -212,22 +222,81 @@ function ChipRow({ title, items = [], value, onSelect }) {
 
 const chip = StyleSheet.create({
   container: { marginBottom: 14 },
-  title: { color: '#666', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  title: { color: colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
   scroll: { gap: 8, paddingRight: 20 },
   pill: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 99,
+    borderRadius: themeRadius.button,
     borderWidth: 1.5,
-    borderColor: '#222',
-    backgroundColor: '#111',
+    borderColor: colors.border,
+    backgroundColor: colors.cardLight,
   },
   pillSelected: {
     borderColor: colors.primary,
-    backgroundColor: '#2b1111',
+    backgroundColor: colors.primary + '15',
   },
-  text: { color: '#888', fontSize: 13, fontWeight: '700' },
-  textSelected: { color: '#fff' },
+  text: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
+  textSelected: { color: colors.textPrimary },
+});
+
+// ── Image Chip Selector (visual previews) ───────────────────────────────────
+function ImageChipRow({ title, items = [], previews, value, onSelect }) {
+  return (
+    <View style={imgChip.container}>
+      <Text style={imgChip.title}>{title}</Text>
+      <View style={imgChip.grid}>
+        {items.map((item) => {
+          const selected = value === item.id;
+          const img = previews[item.id];
+          return (
+            <AnimatedPressable
+              key={`${title}-${item.id}`}
+              style={[imgChip.card, selected && imgChip.cardSelected]}
+              onPress={() => { hapticTap(); onSelect(item.id); }}
+              scaleDown={0.92}
+              haptic={null}
+            >
+              {img && (
+                <Image source={img} style={imgChip.image} resizeMode="cover" />
+              )}
+              <Text style={[imgChip.label, selected && imgChip.labelSelected]} numberOfLines={1}>
+                {item.label}
+              </Text>
+              {selected && <View style={imgChip.check}><Ionicons name="checkmark-circle" size={16} color={colors.primary} /></View>}
+            </AnimatedPressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const imgChip = StyleSheet.create({
+  container: { marginBottom: 16 },
+  title: { color: colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  card: {
+    width: (SCREEN_W - 40 - 20) / 3,
+    backgroundColor: colors.cardLight,
+    borderRadius: themeRadius.card,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    alignItems: 'center',
+  },
+  cardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  image: {
+    width: '100%',
+    height: 70,
+    backgroundColor: colors.background,
+  },
+  label: { color: colors.textSecondary, fontSize: 11, fontWeight: '700', paddingVertical: 6, textAlign: 'center' },
+  labelSelected: { color: colors.textPrimary },
+  check: { position: 'absolute', top: 4, right: 4 },
 });
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
@@ -319,11 +388,15 @@ export default function AvatarCreationScreen({ navigation, route }) {
     bounceAvatar();
   };
 
+  const [savingMessage, setSavingMessage] = useState(null);
+
   const save = async () => {
     try {
       setLoading(true);
+      setSavingMessage('Creating your avatar...');
       await createAvatar({ gender, ...face, imageVariant });
       hapticSuccess();
+      setSavingMessage('Generating your AI portrait...');
       setShowConfetti(true);
       setTimeout(() => {
         if (editing) {
@@ -331,9 +404,10 @@ export default function AvatarCreationScreen({ navigation, route }) {
         } else {
           navigation.replace('MainTabs');
         }
-      }, 1800);
+      }, 2500);
     } catch (e) {
       Alert.alert('Avatar', e.message);
+      setSavingMessage(null);
     } finally {
       setLoading(false);
     }
@@ -358,7 +432,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
       <ConfettiOverlay visible={showConfetti} />
 
       {/* ── Header ── */}
-      <LinearGradient colors={gradients.dark} style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         {/* Progress bar */}
         <View style={styles.progressTrack}>
           <Animated.View style={[styles.progressFill, { transform: [{ scaleX: progressWidth }] }]} />
@@ -376,7 +450,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
             </View>
             {editing && (
               <AnimatedPressable style={styles.closeBtn} onPress={() => navigation.goBack()} haptic="light" scaleDown={0.85}>
-                <Ionicons name="close" size={20} color="#888" />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </AnimatedPressable>
             )}
           </View>
@@ -385,18 +459,18 @@ export default function AvatarCreationScreen({ navigation, route }) {
         {/* Avatar preview */}
         <Animated.View style={[styles.previewWrap, { transform: [{ scale: avatarBounce }] }]}>
           <View style={styles.previewCircle}>
-            <Ionicons name="person" size={44} color="#555" />
+            <Ionicons name="person" size={44} color={colors.textMuted} />
           </View>
         </Animated.View>
 
         {/* Randomize button */}
         <AnimatedPressable style={styles.randomizeBtn} onPress={randomize} haptic="medium" scaleDown={0.88}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="shuffle" size={16} color="#aaa" />
+            <Ionicons name="shuffle" size={16} color={colors.textSecondary} />
             <Text style={styles.randomizeText}>RANDOMIZE</Text>
           </View>
         </AnimatedPressable>
-      </LinearGradient>
+      </View>
 
       {/* ── Content ── */}
       <Animated.View style={[styles.contentWrap, { opacity: contentOpacity }]}>
@@ -417,7 +491,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
                     scaleDown={0.96}
                     haptic={null}
                   >
-                    <Ionicons name={g === 'MALE' ? 'man' : 'woman'} size={24} color={gender === g ? colors.primary : '#555'} />
+                    <Ionicons name={g === 'MALE' ? 'man' : 'woman'} size={24} color={gender === g ? colors.primary : colors.textMuted} />
                     <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>{g}</Text>
                   </AnimatedPressable>
                 ))}
@@ -434,30 +508,30 @@ export default function AvatarCreationScreen({ navigation, route }) {
                 selectedIndex={face.faceSkinToneId}
                 onSelect={(id) => pick('faceSkinToneId', id)}
               />
-              <ChipRow title="Jaw Shape" items={options.jaw} value={face.faceJawId} onSelect={(id) => pick('faceJawId', id)} />
-              <ChipRow title="Cheeks" items={options.cheeks} value={face.faceCheeksId} onSelect={(id) => pick('faceCheeksId', id)} />
+              <ImageChipRow title="Jaw Shape" items={options.jaw} previews={JAW_PREVIEWS} value={face.faceJawId} onSelect={(id) => pick('faceJawId', id)} />
+              <ImageChipRow title="Cheeks" items={options.cheeks} previews={CHEEKS_PREVIEWS} value={face.faceCheeksId} onSelect={(id) => pick('faceCheeksId', id)} />
             </>
           )}
 
           {/* Step 2: Face details - Eyes, Nose, Eyebrows */}
           {step === 2 && options && (
             <>
-              <ChipRow title="Eye Shape" items={options.eyeShape} value={face.faceEyeShapeId} onSelect={(id) => pick('faceEyeShapeId', id)} />
+              <ImageChipRow title="Eye Shape" items={options.eyeShape} previews={EYES_PREVIEWS} value={face.faceEyeShapeId} onSelect={(id) => pick('faceEyeShapeId', id)} />
               <ColorSwatchRow
                 title="Eye Color"
                 swatches={EYE_COLORS_HEX}
                 selectedIndex={face.faceEyeColorId}
                 onSelect={(id) => pick('faceEyeColorId', id)}
               />
-              <ChipRow title="Nose" items={options.nose} value={face.faceNoseId} onSelect={(id) => pick('faceNoseId', id)} />
-              <ChipRow title="Eyebrows" items={options.eyebrow} value={face.faceEyebrowId} onSelect={(id) => pick('faceEyebrowId', id)} />
+              <ImageChipRow title="Nose" items={options.nose} previews={NOSE_PREVIEWS} value={face.faceNoseId} onSelect={(id) => pick('faceNoseId', id)} />
+              <ImageChipRow title="Eyebrows" items={options.eyebrow} previews={BROWS_PREVIEWS} value={face.faceEyebrowId} onSelect={(id) => pick('faceEyebrowId', id)} />
             </>
           )}
 
           {/* Step 3: Hair & Beard */}
           {step === 3 && options && (
             <>
-              <ChipRow title="Hair Style" items={options.hairStyle} value={face.faceHairStyleId} onSelect={(id) => pick('faceHairStyleId', id)} />
+              <ImageChipRow title="Hair Style" items={options.hairStyle} previews={HAIR_PREVIEWS} value={face.faceHairStyleId} onSelect={(id) => pick('faceHairStyleId', id)} />
               <ColorSwatchRow
                 title="Hair Color"
                 swatches={HAIR_COLORS_HEX}
@@ -465,7 +539,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
                 onSelect={(id) => pick('faceHairColorId', id)}
               />
               {gender === 'MALE' && options.beard && (
-                <ChipRow title="Beard" items={options.beard} value={face.faceBeardId} onSelect={(id) => pick('faceBeardId', id)} />
+                <ImageChipRow title="Beard" items={options.beard} previews={BEARD_PREVIEWS} value={face.faceBeardId} onSelect={(id) => pick('faceBeardId', id)} />
               )}
             </>
           )}
@@ -475,9 +549,9 @@ export default function AvatarCreationScreen({ navigation, route }) {
             <View style={styles.confirmSection}>
               <View style={styles.confirmCard}>
                 <Ionicons name="sparkles" size={40} color="#D4AF37" />
-                <Text style={styles.confirmTitle}>Your avatar is ready!</Text>
+                <Text style={styles.confirmTitle}>Ready to create?</Text>
                 <Text style={styles.confirmSub}>
-                  Your custom AI-generated portrait will be created when you save.
+                  Hit CREATE AVATAR to generate your unique AI portrait.
                   It evolves as you train and level up!
                 </Text>
               </View>
@@ -509,9 +583,9 @@ export default function AvatarCreationScreen({ navigation, route }) {
 
         {step < STEPS.length - 1 ? (
           <AnimatedPressable style={styles.nextBtnWrap} onPress={goNext} haptic="medium" scaleDown={0.93}>
-            <LinearGradient colors={gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtnGrad}>
+            <View style={styles.nextBtnGrad}>
               <Text style={styles.nextBtnText}>NEXT →</Text>
-            </LinearGradient>
+            </View>
           </AnimatedPressable>
         ) : (
           <AnimatedPressable
@@ -521,12 +595,23 @@ export default function AvatarCreationScreen({ navigation, route }) {
             haptic="heavy"
             scaleDown={0.93}
           >
-            <LinearGradient colors={['#D4AF37', '#B8860B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtnGrad}>
+            <View style={[styles.nextBtnGrad, { backgroundColor: colors.gold }]}>
               <Text style={styles.nextBtnText}>{loading ? 'CREATING...' : 'CREATE AVATAR'}</Text>
-            </LinearGradient>
+            </View>
           </AnimatedPressable>
         )}
       </View>
+
+      {/* ── Saving overlay ── */}
+      {savingMessage && (
+        <View style={styles.savingOverlay}>
+          <View style={styles.savingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.savingText}>{savingMessage}</Text>
+            <Text style={styles.savingHint}>Your AI portrait is being generated in the background</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -544,10 +629,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   // Header
-  header: { paddingHorizontal: 20, paddingBottom: 16 },
+  header: { paddingHorizontal: 20, paddingBottom: 16, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
   progressTrack: {
     height: 4,
-    backgroundColor: '#1f1f1f',
+    backgroundColor: colors.border,
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 16,
@@ -566,13 +651,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   stepTitle: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 22,
-    fontWeight: '900',
+    fontFamily: fonts.heading,
     letterSpacing: 0.5,
   },
   stepSubtitle: {
-    color: '#555',
+    color: colors.textMuted,
     fontSize: 13,
     marginTop: 3,
   },
@@ -586,7 +671,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   stepCounterTotal: {
-    color: '#333',
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -600,9 +685,9 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.cardLight,
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -611,10 +696,10 @@ const styles = StyleSheet.create({
   closeBtn: {
     width: 34,
     height: 34,
-    borderRadius: 17,
-    backgroundColor: '#1a1a1a',
+    borderRadius: themeRadius.card,
+    backgroundColor: colors.cardLight,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -622,15 +707,15 @@ const styles = StyleSheet.create({
   // Randomize
   randomizeBtn: {
     alignSelf: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.cardLight,
     borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 99,
+    borderColor: colors.border,
+    borderRadius: themeRadius.button,
     paddingHorizontal: 18,
     paddingVertical: 8,
   },
   randomizeText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
@@ -640,7 +725,7 @@ const styles = StyleSheet.create({
   contentWrap: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20 },
   sectionLabel: {
-    color: '#555',
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -653,10 +738,10 @@ const styles = StyleSheet.create({
   genderCard: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#111',
+    backgroundColor: colors.cardLight,
     borderWidth: 1,
-    borderColor: '#222',
-    borderRadius: 14,
+    borderColor: colors.border,
+    borderRadius: themeRadius.card,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -664,29 +749,29 @@ const styles = StyleSheet.create({
   },
   genderCardActive: {
     borderColor: colors.primary,
-    backgroundColor: '#1a0808',
+    backgroundColor: colors.primary + '15',
   },
-  genderText: { color: '#555', fontWeight: '800', fontSize: 13, letterSpacing: 1 },
-  genderTextActive: { color: '#fff' },
+  genderText: { color: colors.textMuted, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
+  genderTextActive: { color: colors.textPrimary },
 
   // Confirm
   confirmSection: { gap: 16 },
   confirmCard: {
-    backgroundColor: '#111',
-    borderRadius: 20,
+    backgroundColor: colors.cardLight,
+    borderRadius: themeRadius.card,
     borderWidth: 1,
-    borderColor: '#D4AF3722',
+    borderColor: colors.gold + '22',
     padding: 24,
     alignItems: 'center',
     gap: 8,
   },
-  confirmTitle: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  confirmSub: { color: '#666', fontSize: 14, textAlign: 'center', lineHeight: 21 },
+  confirmTitle: { color: colors.textPrimary, fontSize: 20, fontFamily: fonts.heading },
+  confirmSub: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 21 },
   summaryCard: {
-    backgroundColor: '#111',
-    borderRadius: 16,
+    backgroundColor: colors.cardLight,
+    borderRadius: themeRadius.card,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: colors.border,
     padding: 16,
   },
   summaryTitle: { color: colors.primary, fontWeight: '800', fontSize: 11, letterSpacing: 1.5, marginBottom: 12 },
@@ -695,10 +780,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: colors.border,
   },
-  summaryLabel: { color: '#666', fontSize: 13 },
-  summaryValue: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  summaryLabel: { color: colors.textSecondary, fontSize: 13 },
+  summaryValue: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
 
   // Bottom bar
   bottomBar: {
@@ -708,7 +793,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#1a1a1a',
+    borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
   backBtn: {
@@ -716,13 +801,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   backBtnText: {
-    color: '#555',
+    color: colors.textSecondary,
     fontWeight: '800',
     fontSize: 13,
     letterSpacing: 0.5,
   },
   nextBtnWrap: {
-    borderRadius: 14,
+    borderRadius: themeRadius.button,
     overflow: 'hidden',
     minWidth: 160,
   },
@@ -730,11 +815,44 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 24,
     alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: themeRadius.button,
   },
   nextBtnText: {
-    color: '#fff',
+    color: colors.primaryOnDark,
     fontWeight: '900',
     fontSize: 15,
     letterSpacing: 1,
+  },
+
+  // Saving overlay
+  savingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  savingCard: {
+    backgroundColor: colors.background,
+    borderRadius: themeRadius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 32,
+    alignItems: 'center',
+    gap: 14,
+    marginHorizontal: 40,
+  },
+  savingText: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  savingHint: {
+    color: colors.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

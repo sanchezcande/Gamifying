@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Easing, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AnimatedPressable from '../components/AnimatedPressable';
@@ -13,10 +12,10 @@ import ClassBadge from '../components/ClassBadge';
 import XPBar from '../components/XPBar';
 import SupplementBadge from '../components/SupplementBadge';
 import LoadingScreen from '../components/LoadingScreen';
-import { colors } from '../theme/theme';
+import { colors, fonts } from '../theme/theme';
 import { nextClassThreshold, timeLeftLabel } from '../utils/avatar';
 
-// ── Animated Streak Fire ────────────────────────────────────────────────────
+// Animated Streak Fire
 function StreakFire({ streak }) {
   const flicker = useRef(new Animated.Value(1)).current;
 
@@ -49,7 +48,7 @@ function StreakFire({ streak }) {
   );
 }
 
-// ── Animated Counter ─────────────────────────────────────────────────────────
+// Animated Counter
 function AnimatedCounter({ value, color, style }) {
   const animValue = useRef(new Animated.Value(0)).current;
   const [displayValue, setDisplayValue] = useState(0);
@@ -78,6 +77,7 @@ export default function HomeScreen({ navigation }) {
   const [topThree, setTopThree] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(false);
   const [fade] = useState(new Animated.Value(0));
   const insets = useSafeAreaInsets();
 
@@ -114,6 +114,15 @@ export default function HomeScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
+  useEffect(() => {
+    if (!user?.avatarGender || user?.profilePhoto) return;
+    const interval = setInterval(async () => {
+      const me = await refreshMe();
+      if (me.profilePhoto) clearInterval(interval);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [user?.avatarGender, user?.profilePhoto]);
+
   const onShare = async () => {
     await Share.share({
       message: `Join my gym on Gamifying! Use my referral email: ${user?.email}. We both earn +200 PWR + 100 GAINS.`,
@@ -128,7 +137,6 @@ export default function HomeScreen({ navigation }) {
   const streak = user?.visitStreak || 0;
   const hasBoosts = (user?.activeSupplements || []).length > 0;
   const isOwner = user?.isOwner;
-  const [socialLoading, setSocialLoading] = useState(false);
 
   const onSocialCheckin = async () => {
     try {
@@ -163,16 +171,16 @@ export default function HomeScreen({ navigation }) {
     >
       <Animated.View style={{ opacity: fade }}>
 
-        {/* ── Header ── */}
-        <LinearGradient colors={['#180003', '#0A0A0A']} style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        {/* Header — clean, light */}
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.brand}>GAMIFYING</Text>
-              <Text style={styles.gymLabel}>{gym?.name || '—'}</Text>
+              <Text style={styles.gymLabel}>{gym?.name || ''}</Text>
             </View>
             <AnimatedPressable style={styles.coinsBadge} onPress={() => navigation.navigate('Shop')} haptic="light">
-              <Ionicons name="diamond" size={14} color="#D4AF37" />
-              <AnimatedCounter value={user?.gymCoins || 0} color="#D4AF37" style={styles.coinsVal} />
+              <Ionicons name="diamond" size={14} color={colors.gold} />
+              <AnimatedCounter value={user?.gymCoins || 0} color={colors.gold} style={styles.coinsVal} />
             </AnimatedPressable>
           </View>
 
@@ -200,11 +208,11 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
           </AnimatedPressable>
-        </LinearGradient>
+        </View>
 
         <View style={styles.body}>
 
-          {/* ── CHECK IN & PURCHASE QR ── */}
+          {/* CHECK IN & PURCHASE QR */}
           <View style={styles.qrActionsRow}>
             <AnimatedPressable
               style={[styles.checkinBtn, { flex: 1 }]}
@@ -212,10 +220,10 @@ export default function HomeScreen({ navigation }) {
               haptic="heavy"
               scaleDown={0.96}
             >
-              <LinearGradient colors={['#E00', '#900']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.checkinGrad}>
-                <Ionicons name="qr-code-outline" size={22} color="#fff" />
+              <View style={styles.checkinInner}>
+                <Ionicons name="qr-code-outline" size={20} color="#fff" />
                 <Text style={styles.checkinText}>CHECK IN</Text>
-              </LinearGradient>
+              </View>
             </AnimatedPressable>
 
             <AnimatedPressable
@@ -224,14 +232,14 @@ export default function HomeScreen({ navigation }) {
               haptic="light"
               scaleDown={0.96}
             >
-              <LinearGradient colors={['#1A1400', '#111']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.purchaseQrGrad}>
-                <Ionicons name="wallet-outline" size={20} color="#D4AF37" />
+              <View style={styles.purchaseQrInner}>
+                <Ionicons name="wallet-outline" size={20} color={colors.gold} />
                 <Text style={styles.purchaseQrText}>MY QR</Text>
-              </LinearGradient>
+              </View>
             </AnimatedPressable>
           </View>
 
-          {/* ── Staff scan (owner only) ── */}
+          {/* Staff scan (owner only) */}
           {isOwner && (
             <AnimatedPressable
               style={styles.staffBtn}
@@ -239,7 +247,7 @@ export default function HomeScreen({ navigation }) {
               haptic="light"
             >
               <View style={styles.staffBtnInner}>
-                <Ionicons name="scan-outline" size={18} color="#22C55E" />
+                <Ionicons name="scan-outline" size={16} color={colors.success} />
                 <Text style={styles.staffBtnText}>Scan Purchase</Text>
                 <View style={styles.staffBadge}>
                   <Text style={styles.staffBadgeText}>STAFF</Text>
@@ -248,48 +256,67 @@ export default function HomeScreen({ navigation }) {
             </AnimatedPressable>
           )}
 
-          {/* ── Streak Card (enhanced) ── */}
+          {/* Social Check-in */}
+          <AnimatedPressable
+            style={[styles.socialBtn, socialLoading && { opacity: 0.6 }]}
+            onPress={onSocialCheckin}
+            disabled={socialLoading}
+            haptic="medium"
+            scaleDown={0.96}
+          >
+            <View style={styles.socialBtnInner}>
+              <Ionicons name="camera-outline" size={16} color={colors.electric} />
+              <Text style={styles.socialBtnText}>
+                {socialLoading ? 'Uploading...' : 'Share on Social +25 PWR'}
+              </Text>
+            </View>
+          </AnimatedPressable>
+
+          {/* Streak Card */}
           <View style={[styles.streakCard, streak >= 7 && styles.streakCardFire]}>
             <View style={styles.streakLeft}>
               <StreakFire streak={streak} />
               <View>
                 <AnimatedCounter value={streak} color="#FF6B35" style={styles.streakCount} />
-                <Text style={styles.streakLabel}>day streak</Text>
+                <Text style={styles.streakLabel}>DAY STREAK</Text>
               </View>
             </View>
             {streak >= 7 ? (
               <View style={styles.streakBonusMax}>
-                <Text style={styles.streakBonusMaxText}>ON FIRE!</Text>
+                <Text style={styles.streakBonusMaxText}>ON FIRE</Text>
               </View>
             ) : streak >= 3 ? (
               <View style={styles.streakBonus}>
-                <Text style={styles.streakBonusText}>+3 END bonus</Text>
+                <Text style={styles.streakBonusText}>+3 PWR</Text>
               </View>
             ) : streak > 0 ? (
               <Text style={styles.streakHint}>{3 - streak} more for bonus</Text>
             ) : null}
           </View>
 
-          {/* ── Stats Row ── */}
-          <View style={styles.statsRow}>
-            <View style={[styles.statPill, { borderColor: '#FF6B3522' }]}>
-              <View style={styles.statIconWrap}><Ionicons name="barbell" size={18} color="#FF6B35" /></View>
-              <AnimatedCounter value={user?.statMuscle || 0} color="#FF6B35" style={styles.statValue} />
-              <Text style={styles.statLabel}>MUS</Text>
+          {/* Stats Row — Power + Gains */}
+          <View style={styles.dualStatRow}>
+            <View style={[styles.statCard, { borderColor: colors.power + '30' }]}>
+              <View style={[styles.statIconCircle, { backgroundColor: colors.power + '15' }]}>
+                <Ionicons name="flash" size={18} color={colors.power} />
+              </View>
+              <View>
+                <Text style={styles.statCardLabel}>POWER</Text>
+                <AnimatedCounter value={user?.statPower || 0} color={colors.power} style={styles.statCardValue} />
+              </View>
             </View>
-            <View style={[styles.statPill, { borderColor: '#3B82F622' }]}>
-              <View style={styles.statIconWrap}><Ionicons name="flash" size={18} color="#3B82F6" /></View>
-              <AnimatedCounter value={user?.statPower || 0} color="#3B82F6" style={styles.statValue} />
-              <Text style={styles.statLabel}>PWR</Text>
-            </View>
-            <View style={[styles.statPill, { borderColor: '#22C55E22' }]}>
-              <View style={styles.statIconWrap}><Ionicons name="shield" size={18} color="#22C55E" /></View>
-              <AnimatedCounter value={user?.statEndurance || 0} color="#22C55E" style={styles.statValue} />
-              <Text style={styles.statLabel}>END</Text>
-            </View>
+            <AnimatedPressable style={[styles.statCard, { borderColor: colors.gold + '30' }]} onPress={() => navigation.navigate('Shop')} haptic="light">
+              <View style={[styles.statIconCircle, { backgroundColor: colors.gold + '15' }]}>
+                <Ionicons name="diamond" size={16} color={colors.gold} />
+              </View>
+              <View>
+                <Text style={styles.statCardLabel}>GAINS</Text>
+                <AnimatedCounter value={user?.gymCoins || 0} color={colors.gold} style={styles.statCardValue} />
+              </View>
+            </AnimatedPressable>
           </View>
 
-          {/* ── Active Boosts ── */}
+          {/* Active Boosts */}
           {hasBoosts && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>ACTIVE BOOSTS</Text>
@@ -301,22 +328,25 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* ── Top 3 this month ── */}
+          {/* Top 3 this month */}
           {topThree.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionLabel}>THIS MONTH</Text>
                 <AnimatedPressable onPress={() => navigation.navigate('Leaderboard')} haptic="light">
-                  <Text style={styles.seeAll}>See all →</Text>
+                  <Text style={styles.seeAll}>See all</Text>
                 </AnimatedPressable>
               </View>
               <View style={styles.rankCard}>
                 {topThree.map((entry, idx) => {
                   const isMe = entry.name === user?.name;
+                  const medalColors = ['#D4AF37', '#A8A9AD', '#CD7F32'];
                   return (
                     <View key={`${entry.name}-${idx}`} style={[styles.rankRow, idx < topThree.length - 1 && styles.rankRowBorder, isMe && styles.rankRowMe]}>
-                      <View style={[styles.rankMedalCircle, { backgroundColor: ['#D4AF37', '#A8A9AD', '#CD7F32'][idx] + '22', borderColor: ['#D4AF37', '#A8A9AD', '#CD7F32'][idx] }]}><Text style={[styles.rankMedalText, { color: ['#D4AF37', '#A8A9AD', '#CD7F32'][idx] }]}>{idx + 1}</Text></View>
-                      <Text style={[styles.rankName, isMe && { color: colors.primary }]} numberOfLines={1}>
+                      <View style={[styles.rankMedalCircle, { borderColor: medalColors[idx], backgroundColor: medalColors[idx] + '15' }]}>
+                        <Text style={[styles.rankMedalText, { color: medalColors[idx] }]}>{idx + 1}</Text>
+                      </View>
+                      <Text style={[styles.rankName, isMe && { color: colors.accent }]} numberOfLines={1}>
                         {isMe ? 'You' : entry.name}
                       </Text>
                       <Text style={styles.rankPwr}>{entry.currentMonthXp || entry.xp || 0} PWR</Text>
@@ -327,27 +357,41 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* ── Quick actions ── */}
+          {/* Quick actions */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>EXPLORE</Text>
             <View style={styles.actionsRow}>
               <AnimatedPressable style={styles.actionCard} onPress={() => navigation.navigate('Battle')} haptic="medium" scaleDown={0.94}>
-                <LinearGradient colors={['#1a0000', '#0d0000']} style={styles.actionGrad}>
-                  <Ionicons name="flash" size={26} color={colors.primary} />
-                  <Text style={[styles.actionLabel, { color: colors.primary }]}>Battle</Text>
-                </LinearGradient>
+                <View style={styles.actionInner}>
+                  <View style={[styles.actionIconCircle, { backgroundColor: colors.accent + '12' }]}>
+                    <Ionicons name="flash" size={22} color={colors.accent} />
+                  </View>
+                  <Text style={[styles.actionLabel, { color: colors.accent }]}>Battle</Text>
+                </View>
               </AnimatedPressable>
               <AnimatedPressable style={styles.actionCard} onPress={() => navigation.navigate('GymBuddy')} haptic="medium" scaleDown={0.94}>
-                <LinearGradient colors={['#0a100a', '#0a0a0a']} style={styles.actionGrad}>
-                  <Ionicons name="people" size={26} color="#22C55E" />
+                <View style={styles.actionInner}>
+                  <View style={[styles.actionIconCircle, { backgroundColor: colors.success + '12' }]}>
+                    <Ionicons name="people" size={22} color={colors.success} />
+                  </View>
                   <Text style={styles.actionLabel}>Buddy</Text>
-                </LinearGradient>
+                </View>
               </AnimatedPressable>
               <AnimatedPressable style={styles.actionCard} onPress={onShare} haptic="medium" scaleDown={0.94}>
-                <LinearGradient colors={['#0a0a10', '#0a0a0a']} style={styles.actionGrad}>
-                  <Ionicons name="share-social" size={26} color="#4A90FF" />
+                <View style={styles.actionInner}>
+                  <View style={[styles.actionIconCircle, { backgroundColor: colors.electric + '12' }]}>
+                    <Ionicons name="share-social" size={22} color={colors.electric} />
+                  </View>
                   <Text style={styles.actionLabel}>Invite</Text>
-                </LinearGradient>
+                </View>
+              </AnimatedPressable>
+              <AnimatedPressable style={styles.actionCard} onPress={() => navigation.navigate('Feedback')} haptic="medium" scaleDown={0.94}>
+                <View style={styles.actionInner}>
+                  <View style={[styles.actionIconCircle, { backgroundColor: colors.textSecondary + '12' }]}>
+                    <Ionicons name="chatbubble-ellipses" size={22} color={colors.textSecondary} />
+                  </View>
+                  <Text style={styles.actionLabel}>Feedback</Text>
+                </View>
               </AnimatedPressable>
             </View>
           </View>
@@ -361,118 +405,122 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
 
-  // Header
-  header:     { paddingHorizontal: 18, paddingBottom: 22 },
-  headerTop:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
-  brand:      { color: colors.primary, fontWeight: '900', fontSize: 17, letterSpacing: 2 },
-  gymLabel:   { color: '#444', fontSize: 12, fontWeight: '600', marginTop: 2 },
+  // Header — light, warm, airy
+  header: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  brand: { color: colors.textPrimary, fontFamily: fonts.heading, fontSize: 22, letterSpacing: 4 },
+  gymLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '600', marginTop: 2, letterSpacing: 1, textTransform: 'uppercase' },
 
   coinsBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#1A1400', borderRadius: 99,
-    borderWidth: 1, borderColor: '#D4AF3744',
-    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: colors.gold + '10', borderWidth: 1, borderColor: colors.gold + '30',
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
   },
-  coinsVal:  { fontWeight: '900', fontSize: 14 },
+  coinsVal: { fontWeight: '900', fontSize: 14 },
 
-  heroCard:    { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  heroInfo:    { flex: 1 },
+  heroCard: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  heroInfo: { flex: 1 },
   heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-  heroName:    { color: '#fff', fontSize: 18, fontWeight: '800', flexShrink: 1 },
-  heroMeta:    { color: '#555', fontSize: 12, marginBottom: 8 },
-  xpRow:       { gap: 4 },
-  xpLabel:     { color: '#555', fontSize: 11, marginTop: 3 },
+  heroName: { color: colors.textPrimary, fontSize: 22, fontFamily: fonts.heading, letterSpacing: 1, flexShrink: 1 },
+  heroMeta: { color: colors.textMuted, fontSize: 11, marginBottom: 8, letterSpacing: 1, textTransform: 'uppercase' },
+  xpRow: { gap: 4 },
+  xpLabel: { color: colors.textMuted, fontSize: 11, marginTop: 3 },
 
-  body: { paddingHorizontal: 18, paddingTop: 14 },
+  body: { paddingHorizontal: 20, paddingTop: 16 },
 
-  // QR Actions
+  // QR Actions — warm accent CTA
   qrActionsRow: { flexDirection: 'row', gap: 10 },
-  checkinBtn:   { borderRadius: 14, overflow: 'hidden' },
-  checkinGrad:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 10 },
-  checkinText:  { color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.5 },
-  purchaseQrBtn:  { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#D4AF3733' },
-  purchaseQrGrad: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 16, gap: 4 },
-  purchaseQrText: { color: '#D4AF37', fontWeight: '800', fontSize: 11, letterSpacing: 0.5 },
+  checkinBtn: { overflow: 'hidden', borderRadius: 10 },
+  checkinInner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 16, gap: 10,
+    backgroundColor: colors.accent,
+    borderRadius: 10,
+  },
+  checkinText: { color: '#fff', fontFamily: fonts.heading, fontSize: 18, letterSpacing: 2 },
+  purchaseQrBtn: { overflow: 'hidden', borderWidth: 1.5, borderColor: colors.gold + '50', borderRadius: 10 },
+  purchaseQrInner: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 16, gap: 4 },
+  purchaseQrText: { color: colors.gold, fontWeight: '800', fontSize: 11, letterSpacing: 1 },
 
   // Staff
-  staffBtn: {
-    marginTop: 10, borderRadius: 12, borderWidth: 1, borderColor: '#22C55E33',
-    backgroundColor: '#0D1F12', overflow: 'hidden',
-  },
-  staffBtnInner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 12, gap: 8,
-  },
-  staffBtnText: { color: '#22C55E', fontWeight: '700', fontSize: 13 },
-  staffBadge: { backgroundColor: '#22C55E22', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  staffBadgeText: { color: '#22C55E', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  staffBtn: { marginTop: 10, borderWidth: 1, borderColor: colors.success + '40', borderRadius: 10, backgroundColor: colors.success + '08' },
+  staffBtnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 8 },
+  staffBtnText: { color: colors.success, fontWeight: '700', fontSize: 13 },
+  staffBadge: { backgroundColor: colors.success + '18', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  staffBadgeText: { color: colors.success, fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+
+  // Social check-in
+  socialBtn: { marginTop: 10, borderWidth: 1, borderColor: colors.electric + '30', borderRadius: 10, backgroundColor: colors.electric + '06' },
+  socialBtnInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, gap: 8 },
+  socialBtnText: { color: colors.electric, fontWeight: '700', fontSize: 13 },
 
   // Streak
   streakCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#111', borderRadius: 14,
-    borderWidth: 1, borderColor: '#FF6B3522',
-    padding: 14, marginTop: 12,
+    backgroundColor: colors.cardLight, borderWidth: 1, borderColor: colors.border,
+    padding: 14, marginTop: 14, borderRadius: 10,
   },
   streakCardFire: {
-    borderColor: '#FF6B3555',
-    backgroundColor: '#1a0f08',
-    shadowColor: '#FF6B35',
-    shadowRadius: 12,
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 0 },
+    borderColor: '#FF6B35' + '50',
+    backgroundColor: '#FFF8F4',
   },
-  streakLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  streakLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   streakCount: { fontWeight: '900', fontSize: 22, lineHeight: 24 },
-  streakLabel: { color: '#555', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  streakBonus: {
-    backgroundColor: '#0D2E1A', borderRadius: 8,
-    borderWidth: 1, borderColor: '#22C55E44',
-    paddingHorizontal: 10, paddingVertical: 5,
-  },
-  streakBonusText: { color: '#22C55E', fontWeight: '800', fontSize: 11 },
-  streakBonusMax: {
-    backgroundColor: '#2b1111', borderRadius: 8,
-    borderWidth: 1, borderColor: '#FF6B3544',
-    paddingHorizontal: 10, paddingVertical: 5,
-  },
+  streakLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
+  streakBonus: { backgroundColor: colors.success + '12', borderWidth: 1, borderColor: colors.success + '30', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  streakBonusText: { color: colors.success, fontWeight: '800', fontSize: 11 },
+  streakBonusMax: { backgroundColor: '#FF6B35' + '12', borderWidth: 1, borderColor: '#FF6B35' + '30', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
   streakBonusMaxText: { color: '#FF6B35', fontWeight: '900', fontSize: 11, letterSpacing: 1 },
-  streakHint: { color: '#444', fontSize: 11, fontWeight: '600' },
+  streakHint: { color: colors.textMuted, fontSize: 11, fontWeight: '600' },
 
-  // Stats row
-  statsRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  statPill: {
+  // Dual stat row — Power + Gains side by side
+  dualStatRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  statCard: {
     flex: 1,
-    backgroundColor: '#111',
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    backgroundColor: colors.cardLight,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    gap: 10,
   },
-  statIconWrap: { marginBottom: 2 },
-  statValue: { fontWeight: '900', fontSize: 20 },
-  statLabel: { color: '#555', fontSize: 9, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
+  statIconCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statCardLabel: { color: colors.textMuted, fontSize: 9, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
+  statCardValue: { fontWeight: '900', fontSize: 20 },
 
   // Sections
-  section:       { marginTop: 20 },
+  section: { marginTop: 22 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionLabel:  { color: '#444', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
-  seeAll:        { color: colors.primary, fontSize: 12, fontWeight: '700', marginBottom: 10 },
+  sectionLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 },
+  seeAll: { color: colors.textSecondary, fontSize: 12, fontWeight: '700', marginBottom: 10, textDecorationLine: 'underline' },
 
-  // Rank card
-  rankCard:      { backgroundColor: '#111', borderRadius: 14, borderWidth: 1, borderColor: '#1E1E1E', overflow: 'hidden' },
-  rankRow:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
-  rankRowBorder: { borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
-  rankRowMe:     { backgroundColor: colors.primary + '0A' },
-  rankMedalCircle: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  // Rank card — light, warm
+  rankCard: { backgroundColor: colors.cardLight, borderRadius: 10, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  rankRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, gap: 10 },
+  rankRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  rankRowMe: { backgroundColor: colors.accent + '08' },
+  rankMedalCircle: { width: 28, height: 28, borderWidth: 1.5, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   rankMedalText: { fontWeight: '900', fontSize: 12 },
-  rankName:      { flex: 1, color: '#fff', fontWeight: '700', fontSize: 14 },
-  rankPwr:       { color: colors.primary, fontWeight: '800', fontSize: 13 },
+  rankName: { flex: 1, color: colors.textPrimary, fontWeight: '700', fontSize: 14 },
+  rankPwr: { color: colors.accent, fontWeight: '800', fontSize: 13 },
 
-  // Quick actions
-  actionsRow:  { flexDirection: 'row', gap: 10 },
-  actionCard:  { flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#1E1E1E' },
-  actionGrad:  { paddingVertical: 18, alignItems: 'center', gap: 6 },
-  actionLabel: { color: '#ccc', fontWeight: '700', fontSize: 12 },
+  // Quick actions — light warm cards with icon circles
+  actionsRow: { flexDirection: 'row', gap: 10 },
+  actionCard: { flex: 1, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, borderRadius: 10 },
+  actionInner: { paddingVertical: 18, alignItems: 'center', gap: 8, backgroundColor: colors.cardLight },
+  actionIconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actionLabel: { color: colors.textPrimary, fontWeight: '700', fontSize: 12 },
 });

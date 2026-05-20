@@ -44,6 +44,22 @@ export const BEARD_PREVIEWS = {
   5: require('./beard_5_mustache.png'),
 };
 
+export const JAW_PREVIEWS = {
+  1: require('./jaw_1_oval.png'),
+  2: require('./jaw_2_square.png'),
+  3: require('./jaw_3_round.png'),
+  4: require('./jaw_4_heart.png'),
+  5: require('./jaw_5_diamond.png'),
+  6: require('./jaw_6_sharp.png'),
+};
+
+export const CHEEKS_PREVIEWS = {
+  1: require('./cheeks_1_flat.png'),
+  2: require('./cheeks_2_chubby.png'),
+  3: require('./cheeks_3_defined.png'),
+  4: require('./cheeks_4_hollow.png'),
+};
+
 // Color swatches (used inline, no images needed)
 export const SKIN_COLORS = {
   1: '#FDEBD0', // very light
