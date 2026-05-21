@@ -3,6 +3,7 @@ import { Alert, Animated, Dimensions, Easing, FlatList, Modal, Platform, Pressab
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../providers/AuthProvider';
 import { useBattleData } from '../providers/BattleProvider';
 import apiService from '../services/apiService';
@@ -794,6 +795,233 @@ function BattleModal({ open, result, me, target, onClose }) {
   );
 }
 
+// ─── Video Battle Modal (AI-generated battle video experience) ────────────────
+const HYPE_MESSAGES = [
+  'PREPARANDO LA ARENA',
+  'LOS LUCHADORES SE CALIENTAN',
+  'GENERANDO BATALLA EPICA',
+  'ESTO SE VA A PONER BUENO',
+  'CARGANDO MOVIMIENTOS ESPECIALES',
+  'LA ARENA ESTA LISTA',
+];
+
+function VideoBattleModal({ open, battleId, result, me, target, onClose }) {
+  const [phase, setPhase] = useState('loading'); // loading | playing | result
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [hypeIdx, setHypeIdx] = useState(0);
+  const videoRef = useRef(null);
+  const pollRef = useRef(null);
+  const hypeRef = useRef(null);
+  const timeoutRef = useRef(null);
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const resultOpacity = useRef(new Animated.Value(0)).current;
+  const resultY = useRef(new Animated.Value(50)).current;
+  const loadProgress = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  const won = result?.winnerId === me?.id;
+  const myGlow = CLASS_GLOW[me?.avatarClass] || '#888';
+  const theirGlow = CLASS_GLOW[target?.avatarClass] || '#888';
+  const winnerGlow = won ? myGlow : theirGlow;
+
+  const cleanup = () => {
+    clearInterval(pollRef.current);
+    clearInterval(hypeRef.current);
+    clearTimeout(timeoutRef.current);
+  };
+
+  const showResults = () => {
+    cleanup();
+    setPhase('result');
+    if (Haptics && Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+    resultOpacity.setValue(0);
+    resultY.setValue(50);
+    Animated.parallel([
+      Animated.timing(resultOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.spring(resultY, { toValue: 0, friction: 6, useNativeDriver: true }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    if (!open || !battleId) return;
+
+    setPhase('loading');
+    setVideoUrl(null);
+    setHypeIdx(0);
+    resultOpacity.setValue(0);
+    resultY.setValue(50);
+    loadProgress.setValue(0);
+
+    // Fake progress bar — fills to ~85% over 60s
+    Animated.timing(loadProgress, {
+      toValue: 0.85, duration: 60000,
+      easing: Easing.out(Easing.quad), useNativeDriver: false,
+    }).start();
+
+    // Pulse VS animation
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.2, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+
+    // Glow ring pulse
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.4, duration: 1500, useNativeDriver: true }),
+      ])
+    );
+    glow.start();
+
+    // Cycle hype messages
+    hypeRef.current = setInterval(() => {
+      setHypeIdx(i => (i + 1) % HYPE_MESSAGES.length);
+    }, 3500);
+
+    // Poll for video status
+    const poll = async () => {
+      try {
+        const res = await apiService.getBattleVideo(battleId);
+        const d = res.data;
+        if (d?.videoStatus === 'DONE' && d?.videoUrl) {
+          loadProgress.stopAnimation();
+          Animated.timing(loadProgress, { toValue: 1, duration: 500, useNativeDriver: false }).start(() => {
+            setVideoUrl(d.videoUrl);
+            setPhase('playing');
+          });
+          clearInterval(pollRef.current);
+        } else if (d?.videoStatus === 'FAILED') {
+          clearInterval(pollRef.current);
+          showResults();
+        }
+      } catch {}
+    };
+    pollRef.current = setInterval(poll, 5000);
+    setTimeout(poll, 3000);
+
+    // Timeout after 120s — show results directly
+    timeoutRef.current = setTimeout(() => {
+      clearInterval(pollRef.current);
+      showResults();
+    }, 120000);
+
+    return () => { cleanup(); pulse.stop(); glow.stop(); };
+  }, [open, battleId]);
+
+  if (!open) return null;
+
+  return (
+    <Modal visible={open} animationType="fade" transparent statusBarTranslucent>
+      <View style={vb.container}>
+        <LinearGradient colors={['#080808', '#1a0808', '#080808']} style={vb.bg}>
+
+          {/* Loading / Hype Phase */}
+          {phase === 'loading' && (
+            <View style={vb.hypeWrap}>
+              <View style={vb.vsRow}>
+                <View style={vb.vsFighter}>
+                  <Animated.View style={[vb.glowRing, { borderColor: myGlow + '66', shadowColor: myGlow, opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }]}>
+                    <AvatarCircle name={me?.name} avatarClass={me?.avatarClass} bodyStage={me?.avatarBodyStage} size="large" profilePhoto={me?.profilePhoto} />
+                  </Animated.View>
+                  <Text style={[vb.vsName, { color: myGlow }]}>{me?.name?.split(' ')[0]}</Text>
+                </View>
+                <Animated.Text style={[vb.vsText, { transform: [{ scale: pulseAnim }] }]}>VS</Animated.Text>
+                <View style={vb.vsFighter}>
+                  <Animated.View style={[vb.glowRing, { borderColor: theirGlow + '66', shadowColor: theirGlow, opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }]}>
+                    <AvatarCircle name={target?.name} avatarClass={target?.avatarClass} bodyStage={target?.avatarBodyStage} size="large" profilePhoto={target?.profilePhoto} />
+                  </Animated.View>
+                  <Text style={[vb.vsName, { color: theirGlow }]}>{target?.name?.split(' ')[0]}</Text>
+                </View>
+              </View>
+
+              <Text style={vb.hypeText}>{HYPE_MESSAGES[hypeIdx]}...</Text>
+
+              <View style={vb.progressTrack}>
+                <Animated.View style={[vb.progressFill, {
+                  width: loadProgress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                }]} />
+              </View>
+            </View>
+          )}
+
+          {/* Video Playback Phase */}
+          {phase === 'playing' && videoUrl && (
+            <Video
+              ref={videoRef}
+              source={{ uri: videoUrl }}
+              style={vb.video}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              onPlaybackStatusUpdate={(status) => {
+                if (status.didJustFinish) showResults();
+              }}
+            />
+          )}
+
+          {/* Results Phase */}
+          {phase === 'result' && (
+            <Animated.View style={[vb.resultBox, { opacity: resultOpacity, transform: [{ translateY: resultY }] }]}>
+              <Text style={vb.resultEmoji}>{won ? '\uD83D\uDC51' : '\uD83D\uDC80'}</Text>
+              <Text style={[vb.resultTitle, { textShadowColor: won ? winnerGlow : 'transparent' }]}>
+                {won ? 'VICTORIA' : 'DERROTA'}
+              </Text>
+              {won ? (
+                <View style={vb.rewardsRow}>
+                  <View style={vb.rewardPill}>
+                    <Text style={[vb.rewardVal, { color: '#D4AF37' }]}>+{result?.gcEarned || 0}</Text>
+                    <Text style={vb.rewardLbl}>GAINS</Text>
+                  </View>
+                  <View style={[vb.rewardPill, { borderColor: '#3B82F630' }]}>
+                    <Text style={[vb.rewardVal, { color: '#3B82F6' }]}>+{result?.xpEarned || 0}</Text>
+                    <Text style={vb.rewardLbl}>PODER</Text>
+                  </View>
+                </View>
+              ) : (
+                <Text style={vb.motto}>Segui entrenando. Volve mas fuerte.</Text>
+              )}
+              <Pressable style={[vb.closeBtn, { borderColor: won ? winnerGlow : '#444' }]} onPress={onClose}>
+                <Text style={vb.closeBtnText}>{won ? 'RECLAMAR VICTORIA' : 'VOLVER'}</Text>
+              </Pressable>
+            </Animated.View>
+          )}
+
+        </LinearGradient>
+      </View>
+    </Modal>
+  );
+}
+
+const vb = StyleSheet.create({
+  container: { flex: 1 },
+  bg: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  hypeWrap: { alignItems: 'center', paddingHorizontal: 24, gap: 36 },
+  vsRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  vsFighter: { alignItems: 'center', gap: 12 },
+  glowRing: { borderWidth: 2, borderRadius: 99, padding: 4, shadowRadius: 25, shadowOpacity: 0.9, shadowOffset: { width: 0, height: 0 }, elevation: 10 },
+  vsName: { fontWeight: '900', fontSize: 15, letterSpacing: 1.5 },
+  vsText: { color: '#CC0000', fontWeight: '900', fontSize: 40, letterSpacing: 6, textShadowColor: '#CC0000', textShadowRadius: 25, textShadowOffset: { width: 0, height: 0 } },
+  hypeText: { color: '#fff', fontWeight: '900', fontSize: 15, letterSpacing: 2, textAlign: 'center', textShadowColor: '#CC000088', textShadowRadius: 12, textShadowOffset: { width: 0, height: 0 } },
+  progressTrack: { width: '80%', height: 3, backgroundColor: '#222', borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#CC0000', borderRadius: 2 },
+  video: { width: '100%', height: '100%' },
+  resultBox: { alignItems: 'center', gap: 16, paddingHorizontal: 24 },
+  resultEmoji: { fontSize: 64 },
+  resultTitle: { color: '#fff', fontSize: 42, fontWeight: '900', letterSpacing: 6, textShadowRadius: 30, textShadowOffset: { width: 0, height: 0 } },
+  rewardsRow: { flexDirection: 'row', gap: 16 },
+  rewardPill: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#D4AF3730', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', gap: 4 },
+  rewardVal: { fontWeight: '900', fontSize: 24 },
+  rewardLbl: { color: '#777', fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  motto: { color: '#777', fontSize: 14 },
+  closeBtn: { borderWidth: 2, borderRadius: 10, paddingVertical: 16, paddingHorizontal: 48, marginTop: 8 },
+  closeBtnText: { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 3 },
+});
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function BattleScreen() {
   const { user, refreshMe } = useAuth();
@@ -802,7 +1030,7 @@ export default function BattleScreen() {
   const [loading, setLoading]               = useState(true);
   const [challengeTarget, setChallengeTarget] = useState(null);
   const [fighting, setFighting]             = useState(false);
-  const [battleState, setBattleState]       = useState({ open: false, result: null, target: null });
+  const [battleState, setBattleState]       = useState({ open: false, result: null, target: null, battleId: null });
   const [battlesRemaining, setBattlesRemaining] = useState(null);
   const [monthlyAthletes, setMonthlyAthletes] = useState([]);
 
@@ -835,7 +1063,7 @@ export default function BattleScreen() {
       const result = await challenge(challengeTarget.id, moves);
       const target = challengeTarget;
       setChallengeTarget(null);
-      setBattleState({ open: true, result, target });
+      setBattleState({ open: true, result, target, battleId: result.battleId || null });
     } catch (e) {
       Alert.alert('Battle', e.message);
     } finally {
@@ -981,17 +1209,32 @@ export default function BattleScreen() {
         onFight={onFight}
       />
 
-      <BattleModal
-        open={battleState.open}
-        result={battleState.result}
-        me={user}
-        target={battleState.target}
-        onClose={async () => {
-          setBattleState({ open: false, result: null, target: null });
-          await refreshMe();
-          await load();
-        }}
-      />
+      {battleState.battleId ? (
+        <VideoBattleModal
+          open={battleState.open}
+          battleId={battleState.battleId}
+          result={battleState.result}
+          me={user}
+          target={battleState.target}
+          onClose={async () => {
+            setBattleState({ open: false, result: null, target: null, battleId: null });
+            await refreshMe();
+            await load();
+          }}
+        />
+      ) : (
+        <BattleModal
+          open={battleState.open}
+          result={battleState.result}
+          me={user}
+          target={battleState.target}
+          onClose={async () => {
+            setBattleState({ open: false, result: null, target: null, battleId: null });
+            await refreshMe();
+            await load();
+          }}
+        />
+      )}
     </View>
   );
 }
