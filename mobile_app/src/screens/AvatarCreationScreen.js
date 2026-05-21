@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,56 +7,21 @@ import {
   Easing,
   Image,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import AnimatedPressable from '../components/AnimatedPressable';
-import apiService from '../services/apiService';
 import { useAuth } from '../providers/AuthProvider';
 import { colors, fonts, radius as themeRadius } from '../theme/theme';
-import {
-  HAIR_PREVIEWS,
-  EYES_PREVIEWS,
-  NOSE_PREVIEWS,
-  BROWS_PREVIEWS,
-  BEARD_PREVIEWS,
-  JAW_PREVIEWS,
-  CHEEKS_PREVIEWS,
-} from '../assets/face';
 
 let Haptics;
 try { Haptics = require('expo-haptics'); } catch {}
 
 const { width: SCREEN_W } = Dimensions.get('window');
-
-const defaultFace = {
-  faceJawId: 1,
-  faceCheeksId: 1,
-  faceEyeShapeId: 1,
-  faceEyeColorId: 1,
-  faceNoseId: 1,
-  faceHairStyleId: 1,
-  faceHairColorId: 1,
-  faceSkinToneId: 1,
-  faceBeardId: 0,
-  faceEyebrowId: 1,
-};
-
-const SKIN_COLORS = ['#FDEBD0', '#F5CBA7', '#E0AC69', '#C68642', '#8D5524', '#5C3317'];
-const HAIR_COLORS_HEX = ['#1a1a1a', '#4A3728', '#D4A853', '#A0522D', '#E8E8E8', '#808080', '#2E5EAA', '#2E8B57'];
-const EYE_COLORS_HEX  = ['#5C3317', '#1a1a1a', '#2E8B57', '#4A90D9', '#808080', '#8B7355'];
-
-const STEPS = [
-  { key: 'gender',  title: 'WHO ARE YOU?',       subtitle: 'Choose your fighter' },
-  { key: 'body',    title: 'YOUR LOOK',          subtitle: 'Skin, face shape & style' },
-  { key: 'face',    title: 'FACE DETAILS',       subtitle: 'Eyes, nose & more' },
-  { key: 'hair',    title: 'HAIR & STYLE',       subtitle: 'Express yourself' },
-  { key: 'confirm', title: 'LOOKING GOOD',       subtitle: 'Review and save your avatar' },
-];
 
 const hapticTap = () => {
   if (Haptics && Platform.OS !== 'web') {
@@ -102,7 +67,7 @@ function ConfettiOverlay({ visible }) {
 function ConfettiPiece({ x, startY, color, size, delay, duration, rotation, drift }) {
   const anim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
+  useState(() => {
     Animated.timing(anim, {
       toValue: 1,
       duration,
@@ -110,7 +75,7 @@ function ConfettiPiece({ x, startY, color, size, delay, duration, rotation, drif
       easing: Easing.out(Easing.quad),
       useNativeDriver: true,
     }).start();
-  }, []);
+  });
 
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [startY, 900] });
   const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [0, drift] });
@@ -133,221 +98,26 @@ function ConfettiPiece({ x, startY, color, size, delay, duration, rotation, drif
   );
 }
 
-// ── Color Swatch Selector ────────────────────────────────────────────────────
-function ColorSwatchRow({ title, swatches, selectedIndex, onSelect }) {
-  return (
-    <View style={swatch.container}>
-      <Text style={swatch.title}>{title}</Text>
-      <View style={swatch.row}>
-        {swatches.map((color, i) => {
-          const idx = i + 1;
-          const selected = selectedIndex === idx;
-          return (
-            <AnimatedPressable
-              key={`${title}-${i}`}
-              style={[
-                swatch.circle,
-                { backgroundColor: color },
-                selected && swatch.circleSelected,
-                selected && { borderColor: colors.primary },
-              ]}
-              onPress={() => { hapticTap(); onSelect(idx); }}
-              scaleDown={0.85}
-              haptic={null}
-            >
-              {selected && <View style={swatch.check} />}
-            </AnimatedPressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-const swatch = StyleSheet.create({
-  container: { marginBottom: 16 },
-  title: { color: colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  circle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 3,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circleSelected: {
-    borderWidth: 3,
-    shadowColor: '#fff',
-    shadowRadius: 8,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  check: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#fff',
-    shadowColor: '#fff',
-    shadowRadius: 4,
-    shadowOpacity: 0.8,
-  },
-});
-
-// ── Chip Selector Row ────────────────────────────────────────────────────────
-function ChipRow({ title, items = [], value, onSelect }) {
-  return (
-    <View style={chip.container}>
-      <Text style={chip.title}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={chip.scroll}>
-        {items.map((item) => {
-          const selected = value === item.id;
-          return (
-            <AnimatedPressable
-              key={`${title}-${item.id}`}
-              style={[chip.pill, selected && chip.pillSelected]}
-              onPress={() => { hapticTap(); onSelect(item.id); }}
-              scaleDown={0.9}
-              haptic={null}
-            >
-              <Text style={[chip.text, selected && chip.textSelected]}>{item.label}</Text>
-            </AnimatedPressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-}
-
-const chip = StyleSheet.create({
-  container: { marginBottom: 14 },
-  title: { color: colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
-  scroll: { gap: 8, paddingRight: 20 },
-  pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: themeRadius.button,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.cardLight,
-  },
-  pillSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '15',
-  },
-  text: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
-  textSelected: { color: colors.textPrimary },
-});
-
-// ── Image Chip Selector (visual previews) ───────────────────────────────────
-function ImageChipRow({ title, items = [], previews, value, onSelect }) {
-  return (
-    <View style={imgChip.container}>
-      <Text style={imgChip.title}>{title}</Text>
-      <View style={imgChip.grid}>
-        {items.map((item) => {
-          const selected = value === item.id;
-          const img = previews[item.id];
-          return (
-            <AnimatedPressable
-              key={`${title}-${item.id}`}
-              style={[imgChip.card, selected && imgChip.cardSelected]}
-              onPress={() => { hapticTap(); onSelect(item.id); }}
-              scaleDown={0.92}
-              haptic={null}
-            >
-              {img && (
-                <Image source={img} style={imgChip.image} resizeMode="cover" />
-              )}
-              <Text style={[imgChip.label, selected && imgChip.labelSelected]} numberOfLines={1}>
-                {item.label}
-              </Text>
-              {selected && <View style={imgChip.check}><Ionicons name="checkmark-circle" size={16} color={colors.primary} /></View>}
-            </AnimatedPressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-const imgChip = StyleSheet.create({
-  container: { marginBottom: 16 },
-  title: { color: colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  card: {
-    width: (SCREEN_W - 40 - 20) / 3,
-    backgroundColor: colors.cardLight,
-    borderRadius: themeRadius.card,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    alignItems: 'center',
-  },
-  cardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '10',
-  },
-  image: {
-    width: '100%',
-    height: 70,
-    backgroundColor: colors.background,
-  },
-  label: { color: colors.textSecondary, fontSize: 11, fontWeight: '700', paddingVertical: 6, textAlign: 'center' },
-  labelSelected: { color: colors.textPrimary },
-  check: { position: 'absolute', top: 4, right: 4 },
-});
-
 // ── Main Screen ──────────────────────────────────────────────────────────────
 export default function AvatarCreationScreen({ navigation, route }) {
-  const { user, createAvatar } = useAuth();
+  const { createAvatar } = useAuth();
   const editing = route.params?.editing ?? false;
   const insets = useSafeAreaInsets();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState('gender'); // 'gender' | 'selfie' | 'confirm'
   const [loading, setLoading] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [gender, setGender] = useState(route.params?.initialGender || 'MALE');
-  const [face, setFace] = useState(
-    route.params?.initialFace ? { ...defaultFace, ...route.params.initialFace } : defaultFace
-  );
-  const [options, setOptions] = useState(null);
-  const [imageVariant] = useState(0);
+  const [gender, setGender] = useState('MALE');
+  const [selfieUri, setSelfieUri] = useState(null);
+  const [selfieBase64, setSelfieBase64] = useState(null);
+  const [facing, setFacing] = useState('front');
+  const [savingMessage, setSavingMessage] = useState(null);
 
-  // Animations
-  const avatarBounce = useRef(new Animated.Value(1)).current;
-  const progressWidth = useRef(new Animated.Value(0)).current;
+  const cameraRef = useRef(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const contentOpacity = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    apiService
-      .getFaceOptions()
-      .then((res) => setOptions(res.data))
-      .catch(() => setOptions(null));
-  }, []);
-
-  // Animate progress bar when step changes
-  useEffect(() => {
-    const targetScale = (step + 1) / STEPS.length;
-    Animated.spring(progressWidth, {
-      toValue: targetScale,
-      friction: 8,
-      tension: 60,
-      useNativeDriver: true,
-    }).start();
-  }, [step]);
-
-  // Bounce avatar preview when face changes
-  const bounceAvatar = useCallback(() => {
-    avatarBounce.setValue(1);
-    Animated.sequence([
-      Animated.timing(avatarBounce, { toValue: 1.08, duration: 150, useNativeDriver: true }),
-      Animated.spring(avatarBounce, { toValue: 1, friction: 3, tension: 200, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const animateStepTransition = useCallback((newStep) => {
+  const animateTransition = useCallback((newStep) => {
     Animated.timing(contentOpacity, {
       toValue: 0,
       duration: 120,
@@ -362,39 +132,45 @@ export default function AvatarCreationScreen({ navigation, route }) {
     });
   }, []);
 
-  const pick = (key, value) => {
-    setFace((prev) => ({ ...prev, [key]: value }));
-    bounceAvatar();
-  };
-
-  const randomize = () => {
-    if (Haptics && Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const takeSelfie = async () => {
+    if (!cameraRef.current) return;
+    hapticTap();
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        base64: true,
+        quality: 0.7,
+        exif: false,
+      });
+      setSelfieUri(photo.uri);
+      setSelfieBase64(photo.base64);
+      animateTransition('confirm');
+    } catch (e) {
+      Alert.alert('Camera Error', e.message);
     }
-    const rand = (max) => Math.floor(Math.random() * max) + 1;
-    const randomFace = {
-      faceSkinToneId:  rand(6),
-      faceJawId:       rand(6),
-      faceCheeksId:    rand(4),
-      faceEyeShapeId:  rand(6),
-      faceEyeColorId:  rand(6),
-      faceNoseId:      rand(5),
-      faceEyebrowId:   rand(4),
-      faceHairStyleId: rand(8),
-      faceHairColorId: rand(8),
-      faceBeardId:     gender === 'MALE' ? rand(5) : 0,
-    };
-    setFace(randomFace);
-    bounceAvatar();
   };
 
-  const [savingMessage, setSavingMessage] = useState(null);
+  const retake = () => {
+    hapticTap();
+    setSelfieUri(null);
+    setSelfieBase64(null);
+    animateTransition('selfie');
+  };
+
+  const skipSelfie = () => {
+    hapticTap();
+    setSelfieUri(null);
+    setSelfieBase64(null);
+    animateTransition('confirm');
+  };
 
   const save = async () => {
     try {
       setLoading(true);
       setSavingMessage('Creating your avatar...');
-      await createAvatar({ gender, ...face, imageVariant });
+      await createAvatar({
+        gender,
+        ...(selfieBase64 ? { selfie: selfieBase64 } : {}),
+      });
       hapticSuccess();
       setSavingMessage('Generating your AI portrait...');
       setShowConfetti(true);
@@ -413,19 +189,20 @@ export default function AvatarCreationScreen({ navigation, route }) {
     }
   };
 
-  const goNext = () => {
-    if (step < STEPS.length - 1) {
-      hapticTap();
-      animateStepTransition(step + 1);
+  const goToSelfie = async () => {
+    hapticTap();
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert('Camera Permission', 'Camera access is needed for your selfie avatar.');
+        return;
+      }
     }
+    animateTransition('selfie');
   };
 
-  const goBack = () => {
-    if (step > 0) {
-      hapticTap();
-      animateStepTransition(step - 1);
-    }
-  };
+  const stepIndex = step === 'gender' ? 0 : step === 'selfie' ? 1 : 2;
+  const totalSteps = 3;
 
   return (
     <View style={styles.container}>
@@ -433,161 +210,136 @@ export default function AvatarCreationScreen({ navigation, route }) {
 
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        {/* Progress bar */}
         <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressFill, { transform: [{ scaleX: progressWidth }] }]} />
+          <View style={[styles.progressFill, { width: `${((stepIndex + 1) / totalSteps) * 100}%` }]} />
         </View>
 
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.stepTitle}>{STEPS[step].title}</Text>
-            <Text style={styles.stepSubtitle}>{STEPS[step].subtitle}</Text>
+            <Text style={styles.stepTitle}>
+              {step === 'gender' ? 'WHO ARE YOU?' : step === 'selfie' ? 'TAKE A SELFIE' : 'LOOKING GOOD'}
+            </Text>
+            <Text style={styles.stepSubtitle}>
+              {step === 'gender' ? 'Choose your fighter' : step === 'selfie' ? 'Your avatar will look like you' : 'Ready to create your avatar'}
+            </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={styles.stepCounter}>
-              <Text style={styles.stepCounterText}>{step + 1}</Text>
-              <Text style={styles.stepCounterTotal}>/{STEPS.length}</Text>
-            </View>
-            {editing && (
-              <AnimatedPressable style={styles.closeBtn} onPress={() => navigation.goBack()} haptic="light" scaleDown={0.85}>
-                <Ionicons name="close" size={20} color={colors.textSecondary} />
-              </AnimatedPressable>
-            )}
+          <View style={styles.stepCounter}>
+            <Text style={styles.stepCounterText}>{stepIndex + 1}</Text>
+            <Text style={styles.stepCounterTotal}>/{totalSteps}</Text>
           </View>
         </View>
-
-        {/* Avatar preview */}
-        <Animated.View style={[styles.previewWrap, { transform: [{ scale: avatarBounce }] }]}>
-          <View style={styles.previewCircle}>
-            <Ionicons name="person" size={44} color={colors.textMuted} />
-          </View>
-        </Animated.View>
-
-        {/* Randomize button */}
-        <AnimatedPressable style={styles.randomizeBtn} onPress={randomize} haptic="medium" scaleDown={0.88}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="shuffle" size={16} color={colors.textSecondary} />
-            <Text style={styles.randomizeText}>RANDOMIZE</Text>
-          </View>
-        </AnimatedPressable>
       </View>
 
       {/* ── Content ── */}
       <Animated.View style={[styles.contentWrap, { opacity: contentOpacity }]}>
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Step 0: Gender */}
-          {step === 0 && (
-            <>
-              <Text style={styles.sectionLabel}>CHOOSE GENDER</Text>
-              <View style={styles.genderRow}>
-                {['MALE', 'FEMALE'].map((g) => (
-                  <AnimatedPressable
-                    key={g}
-                    style={[styles.genderCard, gender === g && styles.genderCardActive]}
-                    onPress={() => { setGender(g); hapticTap(); bounceAvatar(); }}
-                    scaleDown={0.96}
-                    haptic={null}
-                  >
-                    <Ionicons name={g === 'MALE' ? 'man' : 'woman'} size={24} color={gender === g ? colors.primary : colors.textMuted} />
-                    <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>{g}</Text>
-                  </AnimatedPressable>
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* Step 1: Body - Skin, Jaw, Cheeks */}
-          {step === 1 && options && (
-            <>
-              <ColorSwatchRow
-                title="Skin Tone"
-                swatches={SKIN_COLORS}
-                selectedIndex={face.faceSkinToneId}
-                onSelect={(id) => pick('faceSkinToneId', id)}
-              />
-              <ImageChipRow title="Jaw Shape" items={options.jaw} previews={JAW_PREVIEWS} value={face.faceJawId} onSelect={(id) => pick('faceJawId', id)} />
-              <ImageChipRow title="Cheeks" items={options.cheeks} previews={CHEEKS_PREVIEWS} value={face.faceCheeksId} onSelect={(id) => pick('faceCheeksId', id)} />
-            </>
-          )}
-
-          {/* Step 2: Face details - Eyes, Nose, Eyebrows */}
-          {step === 2 && options && (
-            <>
-              <ImageChipRow title="Eye Shape" items={options.eyeShape} previews={EYES_PREVIEWS} value={face.faceEyeShapeId} onSelect={(id) => pick('faceEyeShapeId', id)} />
-              <ColorSwatchRow
-                title="Eye Color"
-                swatches={EYE_COLORS_HEX}
-                selectedIndex={face.faceEyeColorId}
-                onSelect={(id) => pick('faceEyeColorId', id)}
-              />
-              <ImageChipRow title="Nose" items={options.nose} previews={NOSE_PREVIEWS} value={face.faceNoseId} onSelect={(id) => pick('faceNoseId', id)} />
-              <ImageChipRow title="Eyebrows" items={options.eyebrow} previews={BROWS_PREVIEWS} value={face.faceEyebrowId} onSelect={(id) => pick('faceEyebrowId', id)} />
-            </>
-          )}
-
-          {/* Step 3: Hair & Beard */}
-          {step === 3 && options && (
-            <>
-              <ImageChipRow title="Hair Style" items={options.hairStyle} previews={HAIR_PREVIEWS} value={face.faceHairStyleId} onSelect={(id) => pick('faceHairStyleId', id)} />
-              <ColorSwatchRow
-                title="Hair Color"
-                swatches={HAIR_COLORS_HEX}
-                selectedIndex={face.faceHairColorId}
-                onSelect={(id) => pick('faceHairColorId', id)}
-              />
-              {gender === 'MALE' && options.beard && (
-                <ImageChipRow title="Beard" items={options.beard} previews={BEARD_PREVIEWS} value={face.faceBeardId} onSelect={(id) => pick('faceBeardId', id)} />
-              )}
-            </>
-          )}
-
-          {/* Step 4: Confirm */}
-          {step === 4 && (
-            <View style={styles.confirmSection}>
-              <View style={styles.confirmCard}>
-                <Ionicons name="sparkles" size={40} color="#D4AF37" />
-                <Text style={styles.confirmTitle}>Ready to create?</Text>
-                <Text style={styles.confirmSub}>
-                  Hit CREATE AVATAR to generate your unique AI portrait.
-                  It evolves as you train and level up!
-                </Text>
-              </View>
-
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>SUMMARY</Text>
-                <SummaryRow label="Gender" value={gender} />
-                <SummaryRow label="Skin" value={`Tone ${face.faceSkinToneId}`} />
-                <SummaryRow label="Hair" value={`Style ${face.faceHairStyleId}`} />
-                <SummaryRow label="Eyes" value={`Shape ${face.faceEyeShapeId}`} />
-                {gender === 'MALE' && face.faceBeardId > 0 && (
-                  <SummaryRow label="Beard" value={`Style ${face.faceBeardId}`} />
-                )}
-              </View>
+        {/* Step: Gender */}
+        {step === 'gender' && (
+          <View style={styles.content}>
+            <Text style={styles.sectionLabel}>CHOOSE GENDER</Text>
+            <View style={styles.genderRow}>
+              {['MALE', 'FEMALE'].map((g) => (
+                <AnimatedPressable
+                  key={g}
+                  style={[styles.genderCard, gender === g && styles.genderCardActive]}
+                  onPress={() => { setGender(g); hapticTap(); }}
+                  scaleDown={0.96}
+                  haptic={null}
+                >
+                  <Ionicons name={g === 'MALE' ? 'man' : 'woman'} size={40} color={gender === g ? colors.primary : colors.textMuted} />
+                  <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>{g}</Text>
+                </AnimatedPressable>
+              ))}
             </View>
-          )}
-        </ScrollView>
+          </View>
+        )}
+
+        {/* Step: Selfie */}
+        {step === 'selfie' && (
+          <View style={styles.cameraContainer}>
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing={facing}
+            >
+              <View style={styles.cameraOverlay}>
+                <View style={styles.cameraGuide} />
+              </View>
+            </CameraView>
+            <Text style={styles.cameraHint}>Center your face in the frame</Text>
+          </View>
+        )}
+
+        {/* Step: Confirm */}
+        {step === 'confirm' && (
+          <View style={styles.content}>
+            <View style={styles.confirmCard}>
+              {selfieUri ? (
+                <Image source={{ uri: selfieUri }} style={styles.selfiePreview} />
+              ) : (
+                <View style={styles.noSelfieCircle}>
+                  <Ionicons name="person" size={50} color={colors.textMuted} />
+                </View>
+              )}
+              <Text style={styles.confirmTitle}>
+                {selfieUri ? 'Your avatar will be based on this photo' : 'Avatar will be generated from scratch'}
+              </Text>
+              <Text style={styles.confirmSub}>
+                Gender: {gender} {selfieUri ? '' : '(no selfie)'}
+              </Text>
+              {selfieUri && (
+                <AnimatedPressable style={styles.retakeBtn} onPress={retake} haptic="light">
+                  <Ionicons name="camera-reverse" size={16} color={colors.textSecondary} />
+                  <Text style={styles.retakeBtnText}>RETAKE</Text>
+                </AnimatedPressable>
+              )}
+            </View>
+          </View>
+        )}
       </Animated.View>
 
       {/* ── Bottom nav ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        {step > 0 ? (
-          <AnimatedPressable style={styles.backBtn} onPress={goBack} haptic="light">
+        {step !== 'gender' ? (
+          <AnimatedPressable
+            style={styles.backBtn}
+            onPress={() => animateTransition(step === 'confirm' ? (selfieUri ? 'confirm' : 'selfie') : 'gender')}
+            haptic="light"
+          >
             <Text style={styles.backBtnText}>← BACK</Text>
           </AnimatedPressable>
         ) : (
           <View style={{ width: 80 }} />
         )}
 
-        {step < STEPS.length - 1 ? (
-          <AnimatedPressable style={styles.nextBtnWrap} onPress={goNext} haptic="medium" scaleDown={0.93}>
+        {step === 'gender' && (
+          <AnimatedPressable style={styles.nextBtnWrap} onPress={goToSelfie} haptic="medium" scaleDown={0.93}>
             <View style={styles.nextBtnGrad}>
               <Text style={styles.nextBtnText}>NEXT →</Text>
             </View>
           </AnimatedPressable>
-        ) : (
+        )}
+
+        {step === 'selfie' && (
+          <View style={styles.cameraButtons}>
+            <AnimatedPressable style={styles.skipBtn} onPress={skipSelfie} haptic="light">
+              <Text style={styles.skipBtnText}>SKIP</Text>
+            </AnimatedPressable>
+            <AnimatedPressable style={styles.shutterWrap} onPress={takeSelfie} haptic="heavy" scaleDown={0.9}>
+              <View style={styles.shutter}>
+                <Ionicons name="camera" size={28} color="#fff" />
+              </View>
+            </AnimatedPressable>
+            <AnimatedPressable
+              style={styles.flipBtn}
+              onPress={() => { hapticTap(); setFacing(f => f === 'front' ? 'back' : 'front'); }}
+              haptic="light"
+            >
+              <Ionicons name="camera-reverse-outline" size={22} color={colors.textSecondary} />
+            </AnimatedPressable>
+          </View>
+        )}
+
+        {step === 'confirm' && (
           <AnimatedPressable
             style={[styles.nextBtnWrap, loading && { opacity: 0.6 }]}
             onPress={save}
@@ -616,174 +368,102 @@ export default function AvatarCreationScreen({ navigation, route }) {
   );
 }
 
-function SummaryRow({ label, value }) {
-  return (
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   // Header
   header: { paddingHorizontal: 20, paddingBottom: 16, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
-  progressTrack: {
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  progressFill: {
-    height: '100%',
-    width: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-    transformOrigin: 'left center',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  stepTitle: {
-    color: colors.textPrimary,
-    fontSize: 22,
-    fontFamily: fonts.heading,
-    letterSpacing: 0.5,
-  },
-  stepSubtitle: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 3,
-  },
-  stepCounter: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  stepCounterText: {
-    color: colors.primary,
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  stepCounterTotal: {
-    color: colors.textMuted,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // Avatar preview
-  previewWrap: {
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  previewCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: colors.cardLight,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Close button (edit mode)
-  closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: themeRadius.card,
-    backgroundColor: colors.cardLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Randomize
-  randomizeBtn: {
-    alignSelf: 'center',
-    backgroundColor: colors.cardLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: themeRadius.button,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-  },
-  randomizeText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
+  progressTrack: { height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 16 },
+  progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  stepTitle: { color: colors.textPrimary, fontSize: 22, fontFamily: fonts.heading, letterSpacing: 0.5 },
+  stepSubtitle: { color: colors.textMuted, fontSize: 13, marginTop: 3 },
+  stepCounter: { flexDirection: 'row', alignItems: 'baseline' },
+  stepCounterText: { color: colors.primary, fontSize: 24, fontWeight: '900' },
+  stepCounterTotal: { color: colors.textMuted, fontSize: 14, fontWeight: '700' },
 
   // Content
   contentWrap: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 20 },
-  sectionLabel: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 14,
-  },
+  content: { paddingHorizontal: 20, paddingTop: 24 },
+  sectionLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 14 },
 
   // Gender cards
-  genderRow: { flexDirection: 'row', gap: 10 },
+  genderRow: { flexDirection: 'row', gap: 12 },
   genderCard: {
     flex: 1,
-    flexDirection: 'row',
     backgroundColor: colors.cardLight,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: themeRadius.card,
-    paddingVertical: 14,
+    paddingVertical: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
-  genderCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '15',
-  },
-  genderText: { color: colors.textMuted, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
+  genderCardActive: { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
+  genderText: { color: colors.textMuted, fontWeight: '800', fontSize: 15, letterSpacing: 1 },
   genderTextActive: { color: colors.textPrimary },
 
+  // Camera
+  cameraContainer: { flex: 1, margin: 16, borderRadius: themeRadius.cardLarge, overflow: 'hidden' },
+  camera: { flex: 1 },
+  cameraOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  cameraGuide: {
+    width: 200,
+    height: 260,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+    borderStyle: 'dashed',
+  },
+  cameraHint: { color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 10 },
+
+  // Camera buttons
+  cameraButtons: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
+  shutterWrap: { borderRadius: 40, overflow: 'hidden' },
+  shutter: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: colors.border,
+  },
+  skipBtn: { paddingVertical: 12, paddingHorizontal: 8 },
+  skipBtnText: { color: colors.textSecondary, fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
+  flipBtn: { padding: 12 },
+
   // Confirm
-  confirmSection: { gap: 16 },
   confirmCard: {
     backgroundColor: colors.cardLight,
     borderRadius: themeRadius.card,
     borderWidth: 1,
-    borderColor: colors.gold + '22',
+    borderColor: colors.border,
     padding: 24,
     alignItems: 'center',
-    gap: 8,
+    gap: 14,
   },
-  confirmTitle: { color: colors.textPrimary, fontSize: 20, fontFamily: fonts.heading },
-  confirmSub: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 21 },
-  summaryCard: {
-    backgroundColor: colors.cardLight,
-    borderRadius: themeRadius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
+  selfiePreview: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 3,
+    borderColor: colors.gold,
   },
-  summaryTitle: { color: colors.primary, fontWeight: '800', fontSize: 11, letterSpacing: 1.5, marginBottom: 12 },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  noSelfieCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  summaryLabel: { color: colors.textSecondary, fontSize: 13 },
-  summaryValue: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+  confirmTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  confirmSub: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
+  retakeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 16, borderRadius: themeRadius.button, borderWidth: 1, borderColor: colors.border },
+  retakeBtnText: { color: colors.textSecondary, fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
 
   // Bottom bar
   bottomBar: {
@@ -796,21 +476,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
-  backBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  backBtnText: {
-    color: colors.textSecondary,
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.5,
-  },
-  nextBtnWrap: {
-    borderRadius: themeRadius.button,
-    overflow: 'hidden',
-    minWidth: 160,
-  },
+  backBtn: { paddingVertical: 12, paddingHorizontal: 4 },
+  backBtnText: { color: colors.textSecondary, fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
+  nextBtnWrap: { borderRadius: themeRadius.button, overflow: 'hidden', minWidth: 160 },
   nextBtnGrad: {
     paddingVertical: 15,
     paddingHorizontal: 24,
@@ -818,12 +486,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: themeRadius.button,
   },
-  nextBtnText: {
-    color: colors.primaryOnDark,
-    fontWeight: '900',
-    fontSize: 15,
-    letterSpacing: 1,
-  },
+  nextBtnText: { color: colors.primaryOnDark, fontWeight: '900', fontSize: 15, letterSpacing: 1 },
 
   // Saving overlay
   savingOverlay: {
@@ -843,16 +506,6 @@ const styles = StyleSheet.create({
     gap: 14,
     marginHorizontal: 40,
   },
-  savingText: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  savingHint: {
-    color: colors.textMuted,
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+  savingText: { color: colors.textPrimary, fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  savingHint: { color: colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 18 },
 });

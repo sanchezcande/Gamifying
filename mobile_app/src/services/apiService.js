@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { clearToken, getToken } from '../utils/storage';
 
-const BASE_URL = 'http://10.10.43.110:3000/api';
+// Set your backend URL here — update when deploying to Railway
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.10.43.110:3000/api';
 
 class ApiService {
   constructor() {
@@ -112,10 +113,6 @@ class ApiService {
     return this.unwrap(await this.client.get(`/avatar/${userId}`));
   }
 
-  async getFaceOptions() {
-    return this.unwrap(await this.client.get('/avatar/face-options'));
-  }
-
   async getShop() {
     return this.unwrap(await this.client.get('/shop'));
   }
@@ -142,6 +139,10 @@ class ApiService {
 
   async getBattlesRemaining() {
     return this.unwrap(await this.client.get('/battles/remaining'));
+  }
+
+  async getBattleVideo(battleId) {
+    return this.unwrap(await this.client.get(`/battles/${battleId}/video`));
   }
 
   async getCompetitions(gymId) {
