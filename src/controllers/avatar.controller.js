@@ -1,6 +1,5 @@
 const prisma = require('../utils/prisma');
 const { ok, fail } = require('../utils/response');
-const { FACE_OPTIONS } = require('../utils/avatarOptions');
 const { getCompetitionScore } = require('../services/avatarService');
 
 async function getAvatar(req, res) {
@@ -39,19 +38,6 @@ async function getAvatar(req, res) {
       gymCoins: user.gymCoins,
       profilePhoto: user.profilePhoto,
       gender: user.avatarGender,
-      faceOptions: {
-        faceJawId: user.faceJawId,
-        faceCheeksId: user.faceCheeksId,
-        faceEyeShapeId: user.faceEyeShapeId,
-        faceEyeColorId: user.faceEyeColorId,
-        faceNoseId: user.faceNoseId,
-        faceHairStyleId: user.faceHairStyleId,
-        faceHairColorId: user.faceHairColorId,
-        faceSkinToneId: user.faceSkinToneId,
-        faceBeardId: user.faceBeardId,
-        faceEyebrowId: user.faceEyebrowId,
-        faceEyebrowColorId: user.faceEyebrowColorId
-      },
       equippedCosmetics,
       activeSupplements,
       competitionScore: getCompetitionScore(user)
@@ -75,7 +61,6 @@ async function equipItem(req, res) {
     if (userItem.shopItem.type !== 'COSMETIC') return fail(res, 400, 'Only cosmetics can be equipped');
 
     await prisma.$transaction(async (tx) => {
-      // updateMany doesn't support relation filters — fetch IDs first
       const toUnequip = await tx.userItem.findMany({
         where: { userId, isEquipped: true },
         include: { shopItem: true }
@@ -105,8 +90,4 @@ async function equipItem(req, res) {
   }
 }
 
-function getFaceOptions(req, res) {
-  return ok(res, FACE_OPTIONS);
-}
-
-module.exports = { getAvatar, equipItem, getFaceOptions };
+module.exports = { getAvatar, equipItem };

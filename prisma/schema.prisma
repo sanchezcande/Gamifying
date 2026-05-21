@@ -39,6 +39,7 @@ model User {
   createdAt          DateTime         @default(now())
   pushToken          String?
   profilePhoto       String?
+  selfiePhoto        String?
   faceEyebrowColorId Int?
   challengerBattles  Battle[]         @relation("Challenger")
   defenderBattles    Battle[]         @relation("Defender")
@@ -161,6 +162,8 @@ model Battle {
   winnerId              String
   gcReward              Int      @default(50)
   xpReward              Int      @default(30)
+  videoUrl              String?
+  videoStatus           BattleVideoStatus @default(NONE)
   createdAt             DateTime @default(now())
   challenger            User     @relation("Challenger", fields: [challengerId], references: [id])
   defender              User     @relation("Defender", fields: [defenderId], references: [id])
@@ -362,6 +365,14 @@ enum WorkoutType {
 enum AvatarRenderStatus {
   PENDING
   IN_PROGRESS
+  DONE
+  FAILED
+}
+
+enum BattleVideoStatus {
+  NONE
+  PENDING
+  PROCESSING
   DONE
   FAILED
 }

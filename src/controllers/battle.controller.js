@@ -3,8 +3,9 @@ const { ok, fail } = require('../utils/response');
 const { calculateProbabilities, resolveBattle, pickAIMoves, validateMoves, SUPPLEMENT_MOVES } = require('../services/battleService');
 const { getActiveSupplements } = require('../services/supplementService');
 const { getAvatarProgress } = require('../services/avatarService');
-const { buildAvatarUrlForUser } = require('../services/avatarImageService');
+const { generateAvatarForUser } = require('../services/avatarImageService');
 const { enqueueAvatarRender } = require('../services/avatarRenderQueue');
+const { generateBattleVideo } = require('../services/battleVideoService');
 
 const WEEKLY_BATTLE_LIMIT = 999;
 
@@ -89,6 +90,7 @@ async function challenge(req, res) {
           challengerProbability,
           defenderProbability,
           winnerId,
+          videoStatus: process.env.GOOGLE_API_KEY ? 'PENDING' : 'NONE',
           ...rewards
         }
       });
@@ -104,13 +106,6 @@ async function challenge(req, res) {
       const shouldUpdateImage =
         winner.avatarGender &&
         (avatar.avatarClass !== winner.avatarClass || avatar.avatarBodyStage !== winner.avatarBodyStage);
-      const nextProfilePhoto = shouldUpdateImage
-        ? buildAvatarUrlForUser({
-          user: winner,
-          avatarClass: avatar.avatarClass,
-          avatarBodyStage: avatar.avatarBodyStage
-        })
-        : null;
 
       await tx.user.update({
         where: { id: winner.id },
@@ -120,7 +115,6 @@ async function challenge(req, res) {
           currentMonthXp: next.currentMonthXp,
           avatarClass: avatar.avatarClass,
           avatarBodyStage: avatar.avatarBodyStage,
-          ...(nextProfilePhoto ? { profilePhoto: nextProfilePhoto } : {})
         }
       });
 
@@ -135,7 +129,37 @@ async function challenge(req, res) {
       });
     }
 
+    // Find the battle we just created to get its ID
+    const createdBattle = await prisma.battle.findFirst({
+      where: { challengerId: challenger.id, defenderId: defender.id, winnerId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Enqueue battle video generation in background
+    if (createdBattle && process.env.GOOGLE_API_KEY) {
+      generateBattleVideo({
+        challenger, defender,
+        rounds: battleResolution.rounds,
+        winnerId,
+      })
+        .then((video) => {
+          const videoUrl = video.uri || video.url || null;
+          return prisma.battle.update({
+            where: { id: createdBattle.id },
+            data: { videoUrl, videoStatus: 'DONE' },
+          });
+        })
+        .catch((err) => {
+          console.error('Battle video generation failed:', err.message);
+          prisma.battle.update({
+            where: { id: createdBattle.id },
+            data: { videoStatus: 'FAILED' },
+          }).catch(() => {});
+        });
+    }
+
     return ok(res, {
+      battleId: createdBattle?.id || null,
       challengerProbability,
       defenderProbability,
       winnerId,
@@ -236,4 +260,28 @@ async function battlesRemaining(req, res) {
   }
 }
 
-module.exports = { challenge, history, leaderboard, battlesRemaining };
+async function battleVideo(req, res) {
+  try {
+    const { battleId } = req.params;
+    const battle = await prisma.battle.findUnique({
+      where: { id: battleId },
+      select: { id: true, challengerId: true, defenderId: true, videoUrl: true, videoStatus: true }
+    });
+    if (!battle) return fail(res, 404, 'Battle not found');
+
+    const userId = req.user.id;
+    if (battle.challengerId !== userId && battle.defenderId !== userId) {
+      return fail(res, 403, 'Forbidden');
+    }
+
+    return ok(res, {
+      battleId: battle.id,
+      videoStatus: battle.videoStatus,
+      videoUrl: battle.videoUrl,
+    });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+module.exports = { challenge, history, leaderboard, battlesRemaining, battleVideo };

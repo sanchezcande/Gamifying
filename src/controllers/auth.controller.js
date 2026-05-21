@@ -5,7 +5,7 @@ const { ok, fail } = require('../utils/response');
 const { getAvatarClass } = require('../services/xpService');
 const { getBodyStage } = require('../services/avatarService');
 const { buildUserProfile } = require('../services/profileService');
-const { generateAvatarImage, buildAvatarImageUrl } = require('../services/avatarImageService');
+const { generateAvatarForUser } = require('../services/avatarImageService');
 
 function signToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -84,52 +84,39 @@ async function me(req, res) {
 
 async function createAvatar(req, res) {
   try {
-    const {
-      gender,
-      faceJawId,
-      faceCheeksId,
-      faceEyeShapeId,
-      faceEyeColorId,
-      faceNoseId,
-      faceHairStyleId,
-      faceHairColorId,
-      faceSkinToneId,
-      faceBeardId,
-      faceEyebrowId,
-      faceEyebrowColorId,
-      imageVariant
-    } = req.body;
+    const { gender, selfie } = req.body;
 
     if (!gender) return fail(res, 400, 'Gender is required');
-
-    const faceOptions = {
-      faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
-      faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
-      faceBeardId, faceEyebrowId, faceEyebrowColorId
-    };
 
     const avatarClass = getAvatarClass(req.user.xp);
     const avatarBodyStage = getBodyStage(req.user.statPower || 0);
 
-    // Save avatar immediately with no photo — DALL-E generates in background
+    const updateData = {
+      avatarGender: gender,
+      profilePhoto: null,
+      avatarClass,
+      avatarBodyStage,
+    };
+
+    // Save selfie base64 if provided (for re-generation on level up)
+    if (selfie) {
+      updateData.selfiePhoto = selfie;
+    }
+
     const user = await prisma.user.update({
       where: { id: req.user.id },
-      data: {
-        avatarGender: gender,
-        faceJawId, faceCheeksId, faceEyeShapeId, faceEyeColorId,
-        faceNoseId, faceHairStyleId, faceHairColorId, faceSkinToneId,
-        faceBeardId, faceEyebrowId, faceEyebrowColorId,
-        profilePhoto: null,
-        avatarClass,
-        avatarBodyStage
-      }
+      data: updateData,
     });
     const { password: _password, ...safeUser } = user;
 
-    // Generate DALL-E image in background, update when ready
-    generateAvatarImage({ gender, avatarClass, faceOptions, bodyStage: avatarBodyStage })
-      .then((dalleUrl) => prisma.user.update({ where: { id: req.user.id }, data: { profilePhoto: dalleUrl } }))
-      .catch((err) => console.error('Background DALL-E generation failed:', err.message));
+    // Generate avatar in background using Google AI
+    generateAvatarForUser({ user, avatarClass, avatarBodyStage })
+      .then((photoUrl) => {
+        if (photoUrl) {
+          return prisma.user.update({ where: { id: req.user.id }, data: { profilePhoto: photoUrl } });
+        }
+      })
+      .catch((err) => console.error('Background avatar generation failed:', err.message));
 
     return ok(res, safeUser);
   } catch (error) {

@@ -13,19 +13,6 @@ function authUser() {
   prisma.user.findUnique.mockResolvedValueOnce(user);
 }
 
-describe('GET /api/avatar/face-options', () => {
-  test('returns all face option categories without auth', async () => {
-    const res = await request(app).get('/api/avatar/face-options');
-
-    expect(res.status).toBe(200);
-    expect(res.body.data).toHaveProperty('jaw');
-    expect(res.body.data).toHaveProperty('cheeks');
-    expect(res.body.data).toHaveProperty('eyeShape');
-    expect(res.body.data).toHaveProperty('hairStyle');
-    expect(Array.isArray(res.body.data.jaw)).toBe(true);
-  });
-});
-
 describe('GET /api/avatar/:userId', () => {
   test('returns avatar data with equipped cosmetics', async () => {
     authUser();
@@ -47,7 +34,6 @@ describe('GET /api/avatar/:userId', () => {
     expect(res.body.data).toHaveProperty('bodyStage');
     expect(res.body.data).toHaveProperty('statMuscle');
     expect(res.body.data).toHaveProperty('gender');
-    expect(res.body.data).toHaveProperty('faceOptions');
     expect(res.body.data).toHaveProperty('competitionScore');
   });
 
@@ -76,7 +62,7 @@ describe('GET /api/avatar/:userId', () => {
 
   test('returns 400 if avatar not created', async () => {
     const noAvatarUser = { ...user, avatarGender: null };
-    prisma.user.findUnique.mockResolvedValueOnce(noAvatarUser); // auth — no avatar → middleware blocks
+    prisma.user.findUnique.mockResolvedValueOnce(noAvatarUser);
 
     const res = await request(app)
       .get(`/api/avatar/${user.id}`)

@@ -41,7 +41,10 @@ const prisma = {
   battle: {
     create: jest.fn(),
     count: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
     findMany: jest.fn(),
+    update: jest.fn(),
     groupBy: jest.fn()
   },
   competition: {

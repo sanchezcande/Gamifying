@@ -1,11 +1,18 @@
 jest.mock('../../src/utils/prisma');
+jest.mock('../../src/services/battleVideoService', () => ({
+  generateBattleVideo: jest.fn().mockResolvedValue({ uri: 'https://video.example.com/battle.mp4' }),
+}));
 
 const request = require('../helpers/request');
 const app = require('../../src/app');
 const prisma = require('../../src/utils/prisma');
+const battleVideoService = require('../../src/services/battleVideoService');
 const { makeToken, mockUser, resetPrismaMocks } = require('../helpers');
 
-beforeEach(() => resetPrismaMocks(prisma));
+beforeEach(() => {
+  resetPrismaMocks(prisma);
+  battleVideoService.generateBattleVideo.mockResolvedValue({ uri: 'https://video.example.com/battle.mp4' });
+});
 
 const challenger = mockUser({ id: 'challenger-id', gymId: 'gym-1' });
 const defender = mockUser({ id: 'defender-id', gymId: 'gym-1', statMuscle: 10 });
@@ -28,8 +35,11 @@ describe('POST /api/battles/challenge/:defenderId', () => {
     mockWeeklyLimit({ weeklyCount: 0 });
 
     jest.spyOn(Math, 'random').mockReturnValue(0.1);
+    prisma.userItem.findMany.mockResolvedValue([]); // no supplements
     prisma.battle.create.mockResolvedValue({});
     prisma.user.update.mockResolvedValue({ ...challenger, xp: 130, gymCoins: 250 });
+    prisma.battle.findFirst.mockResolvedValue({ id: 'battle-1' });
+    prisma.battle.update.mockResolvedValue({});
 
     const res = await request(app)
       .post(`/api/battles/challenge/${defender.id}`)
@@ -37,6 +47,7 @@ describe('POST /api/battles/challenge/:defenderId', () => {
 
     jest.restoreAllMocks();
     expect(res.status).toBe(200);
+    expect(res.body.data).toHaveProperty('battleId');
     expect(res.body.data).toHaveProperty('winnerId');
     expect(res.body.data).toHaveProperty('challengerProbability');
     expect(res.body.data).toHaveProperty('gcEarned');
@@ -47,7 +58,7 @@ describe('POST /api/battles/challenge/:defenderId', () => {
     authChallenger();
     prisma.user.findUnique.mockResolvedValueOnce(challenger);
     prisma.user.findUnique.mockResolvedValueOnce(defender);
-    mockWeeklyLimit({ weeklyCount: 2 });
+    mockWeeklyLimit({ weeklyCount: 999 });
 
     const res = await request(app)
       .post(`/api/battles/challenge/${defender.id}`)
@@ -65,8 +76,11 @@ describe('POST /api/battles/challenge/:defenderId', () => {
     prisma.user.findMany.mockResolvedValueOnce([{ id: challenger.id }, { id: defender.id }]);
 
     jest.spyOn(Math, 'random').mockReturnValue(0.1);
+    prisma.userItem.findMany.mockResolvedValue([]); // no supplements
     prisma.battle.create.mockResolvedValue({});
     prisma.user.update.mockResolvedValue({ ...challenger, xp: 130, gymCoins: 250 });
+    prisma.battle.findFirst.mockResolvedValue({ id: 'battle-champ' });
+    prisma.battle.update.mockResolvedValue({});
 
     const res = await request(app)
       .post(`/api/battles/challenge/${defender.id}`)
@@ -143,19 +157,19 @@ describe('GET /api/battles/remaining', () => {
       .set('Authorization', `Bearer ${makeToken(challenger.id)}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ remaining: 1, limit: 2 });
+    expect(res.body.data).toEqual({ remaining: 998, limit: 999 });
   });
 
   test('returns 0 remaining when limit reached', async () => {
     authChallenger();
-    prisma.battle.count.mockResolvedValueOnce(2);
+    prisma.battle.count.mockResolvedValueOnce(999);
 
     const res = await request(app)
       .get('/api/battles/remaining')
       .set('Authorization', `Bearer ${makeToken(challenger.id)}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ remaining: 0, limit: 2 });
+    expect(res.body.data).toEqual({ remaining: 0, limit: 999 });
   });
 });
 

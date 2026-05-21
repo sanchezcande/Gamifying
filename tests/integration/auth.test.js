@@ -1,16 +1,19 @@
 jest.mock('../../src/utils/prisma');
 jest.mock('../../src/services/avatarImageService', () => ({
-  generateAvatarImage: jest.fn().mockResolvedValue('https://img.example.com/avatar.png'),
-  buildAvatarImageUrl: jest.fn().mockReturnValue('https://img.example.com/fallback.png'),
+  generateAvatarForUser: jest.fn().mockResolvedValue('data:image/png;base64,abc123'),
 }));
 
 const request = require('../helpers/request');
 const bcrypt = require('bcrypt');
 const app = require('../../src/app');
 const prisma = require('../../src/utils/prisma');
+const avatarImageService = require('../../src/services/avatarImageService');
 const { makeToken, mockUser, resetPrismaMocks } = require('../helpers');
 
-beforeEach(() => resetPrismaMocks(prisma));
+beforeEach(() => {
+  resetPrismaMocks(prisma);
+  avatarImageService.generateAvatarForUser.mockResolvedValue('data:image/png;base64,abc123');
+});
 
 describe('POST /api/auth/register', () => {
   test('registers successfully without gymId', async () => {
@@ -162,12 +165,12 @@ describe('POST /api/auth/create-avatar', () => {
   test('creates avatar successfully', async () => {
     const user = mockUser({ avatarGender: null });
     prisma.user.findUnique.mockResolvedValue(user);
-    prisma.user.update.mockResolvedValue({ ...user, avatarGender: 'MALE', profilePhoto: 'https://img.example.com/avatar.png' });
+    prisma.user.update.mockResolvedValue({ ...user, avatarGender: 'MALE' });
 
     const res = await request(app)
       .post('/api/auth/create-avatar')
       .set('Authorization', `Bearer ${makeToken(user.id)}`)
-      .send({ gender: 'MALE', faceJawId: 1, faceCheeksId: 1, faceEyeShapeId: 1 });
+      .send({ gender: 'MALE' });
 
     expect(res.status).toBe(200);
     expect(res.body.data).not.toHaveProperty('password');

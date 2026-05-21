@@ -1,5 +1,5 @@
 const prisma = require('../utils/prisma');
-const { generateAvatarUrlForUser } = require('./avatarImageService');
+const { generateAvatarForUser } = require('./avatarImageService');
 
 const MAX_ATTEMPTS = 3;
 const STALE_LOCK_MINUTES = 10;
@@ -90,7 +90,7 @@ async function processOneJob() {
       return true;
     }
 
-    const url = await generateAvatarUrlForUser({
+    const url = await generateAvatarForUser({
       user,
       avatarClass: job.avatarClass,
       avatarBodyStage: job.avatarBodyStage
@@ -132,7 +132,7 @@ async function processOneJob() {
 }
 
 async function runAvatarRenderWorkerOnce() {
-  if (!process.env.OPENAI_API_KEY) return;
+  if (!process.env.GOOGLE_API_KEY) return;
   if (!(await ensureQueueReady())) return;
   let didWork = true;
   while (didWork) {
@@ -152,7 +152,7 @@ function startAvatarRenderWorker() {
 }
 
 async function enqueueAvatarRender({ user, avatarClass, avatarBodyStage }) {
-  if (!process.env.OPENAI_API_KEY) return;
+  if (!process.env.GOOGLE_API_KEY) return;
   if (!(await ensureQueueReady())) return;
   if (!user?.id) return;
 

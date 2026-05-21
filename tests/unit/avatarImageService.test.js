@@ -1,30 +1,26 @@
-const { buildAvatarImageUrl } = require('../../src/services/avatarImageService');
+const { buildAvatarPrompt, CLASS_BUILD, STAGE_BUILD } = require('../../src/services/avatarImageService');
 
 describe('avatarImageService', () => {
-  test('builds pollinations URL with stable seed for same variant', () => {
-    const url1 = buildAvatarImageUrl({
-      name: 'Luca',
-      avatarClass: 'FIGHTER',
-      gender: 'MALE',
-      faceOptions: { faceHairStyleId: 2, faceSkinToneId: 3 },
-      imageVariant: 5
-    });
-    const url2 = buildAvatarImageUrl({
-      name: 'Luca',
-      avatarClass: 'FIGHTER',
-      gender: 'MALE',
-      faceOptions: { faceHairStyleId: 2, faceSkinToneId: 3 },
-      imageVariant: 5
-    });
-
-    expect(url1).toEqual(url2);
-    expect(url1).toContain('image.pollinations.ai');
-    expect(url1).toContain('seed=');
+  test('builds prompt with correct gender and class', () => {
+    const prompt = buildAvatarPrompt({ gender: 'MALE', avatarClass: 'FIGHTER', bodyStage: 2 });
+    expect(prompt).toContain('male');
+    expect(prompt).toContain(STAGE_BUILD[2]);
+    expect(prompt).toContain('Pixar');
   });
 
-  test('changes image seed when variant changes', () => {
-    const base = buildAvatarImageUrl({ name: 'Luca', avatarClass: 'FIGHTER', imageVariant: 1 });
-    const changed = buildAvatarImageUrl({ name: 'Luca', avatarClass: 'FIGHTER', imageVariant: 2 });
-    expect(base).not.toEqual(changed);
+  test('uses female label for FEMALE gender', () => {
+    const prompt = buildAvatarPrompt({ gender: 'FEMALE', avatarClass: 'CHAMPION', bodyStage: 3 });
+    expect(prompt).toContain('female');
+  });
+
+  test('falls back to class build when body stage is invalid', () => {
+    const prompt = buildAvatarPrompt({ gender: 'MALE', avatarClass: 'WARRIOR', bodyStage: 99 });
+    expect(prompt).toContain(CLASS_BUILD.WARRIOR);
+  });
+
+  test('defaults to ROOKIE class build', () => {
+    const prompt = buildAvatarPrompt({});
+    expect(prompt).toContain('male');
+    expect(prompt).toContain(CLASS_BUILD.ROOKIE);
   });
 });
