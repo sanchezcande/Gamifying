@@ -106,7 +106,7 @@ export default function AvatarScreen({ navigation }) {
           initialFace: avatar.faceOptions
         })}
       >
-        <Text style={styles.editBtnText}>✏️  Edit Avatar</Text>
+        <Text style={styles.editBtnText}>🔄  Regenerate Avatar</Text>
       </Pressable>
 
       <Pressable style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>

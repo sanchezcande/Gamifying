@@ -114,14 +114,6 @@ export default function HomeScreen({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
-  useEffect(() => {
-    if (!user?.avatarGender || user?.profilePhoto) return;
-    const interval = setInterval(async () => {
-      const me = await refreshMe();
-      if (me.profilePhoto) clearInterval(interval);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [user?.avatarGender, user?.profilePhoto]);
 
   const onShare = async () => {
     await Share.share({
@@ -211,6 +203,27 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <View style={styles.body}>
+
+          {/* Avatar CTA — if no profile photo */}
+          {!user?.profilePhoto && (
+            <AnimatedPressable
+              style={styles.avatarCta}
+              onPress={() => navigation.navigate('AvatarCreation', { editing: !!user?.avatarGender })}
+              haptic="medium"
+              scaleDown={0.97}
+            >
+              <View style={styles.avatarCtaInner}>
+                <Ionicons name="sparkles" size={22} color={colors.gold} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.avatarCtaTitle}>
+                    {user?.avatarGender ? 'Regenerate your avatar' : 'Create your fighter avatar!'}
+                  </Text>
+                  <Text style={styles.avatarCtaSubtitle}>Take a selfie and AI will create your character</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </View>
+            </AnimatedPressable>
+          )}
 
           {/* CHECK IN & PURCHASE QR */}
           <View style={styles.qrActionsRow}>
@@ -454,6 +467,12 @@ const styles = StyleSheet.create({
   staffBtnText: { color: colors.success, fontWeight: '700', fontSize: 13 },
   staffBadge: { backgroundColor: colors.success + '18', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   staffBadgeText: { color: colors.success, fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+
+  // Avatar CTA
+  avatarCta: { marginBottom: 14, borderRadius: 10, borderWidth: 1.5, borderColor: colors.gold + '40', borderStyle: 'dashed', backgroundColor: colors.gold + '06' },
+  avatarCtaInner: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  avatarCtaTitle: { color: colors.gold, fontWeight: '800', fontSize: 14 },
+  avatarCtaSubtitle: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
 
   // Social check-in
   socialBtn: { marginTop: 10, borderWidth: 1, borderColor: colors.electric + '30', borderRadius: 10, backgroundColor: colors.electric + '06' },
