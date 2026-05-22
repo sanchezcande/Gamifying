@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
 import { useAvatarData } from '../providers/AvatarProvider';
 import ClassBadge from '../components/ClassBadge';
@@ -20,9 +21,11 @@ export default function AvatarScreen({ navigation }) {
   const { avatar, loading, loadAvatar } = useAvatarData();
   const [showFullBody, setShowFullBody] = useState(false);
 
-  useEffect(() => {
-    if (user?.id) loadAvatar(user.id);
-  }, [user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) loadAvatar(user.id);
+    }, [user?.id])
+  );
 
   if (loading) return <LoadingScreen />;
   if (!avatar) {

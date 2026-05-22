@@ -100,7 +100,7 @@ function ConfettiPiece({ x, startY, color, size, delay, duration, rotation, drif
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 export default function AvatarCreationScreen({ navigation, route }) {
-  const { createAvatar } = useAuth();
+  const { createAvatar, refreshMe } = useAuth();
   const editing = route.params?.editing ?? false;
   const insets = useSafeAreaInsets();
 
@@ -112,6 +112,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
   const [selfieBase64, setSelfieBase64] = useState(null);
   const [facing, setFacing] = useState('front');
   const [savingMessage, setSavingMessage] = useState(null);
+  const [savingProgress, setSavingProgress] = useState(0);
 
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -171,16 +172,36 @@ export default function AvatarCreationScreen({ navigation, route }) {
         gender,
         ...(selfieBase64 ? { selfie: selfieBase64 } : {}),
       });
-      hapticSuccess();
+
       setSavingMessage('Generating your AI portrait...');
+      setSavingProgress(10);
+
+      // Poll until profilePhoto is ready (max ~30s)
+      let avatarReady = false;
+      for (let i = 0; i < 15; i++) {
+        setSavingProgress(Math.min(90, 10 + (i + 1) * 5));
+        await new Promise((r) => setTimeout(r, 2000));
+        try {
+          const updated = await refreshMe();
+          if (updated?.profilePhoto) {
+            avatarReady = true;
+            setSavingProgress(100);
+            break;
+          }
+        } catch {}
+      }
+
+      hapticSuccess();
       setShowConfetti(true);
+      setSavingMessage(avatarReady ? 'Your avatar is ready!' : 'Avatar will appear shortly');
+
       setTimeout(() => {
         if (editing) {
           navigation.goBack();
         } else {
           navigation.replace('MainTabs');
         }
-      }, 2500);
+      }, 2000);
     } catch (e) {
       Alert.alert('Avatar', e.message);
       setSavingMessage(null);
@@ -359,7 +380,14 @@ export default function AvatarCreationScreen({ navigation, route }) {
           <View style={styles.savingCard}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.savingText}>{savingMessage}</Text>
-            <Text style={styles.savingHint}>Your AI portrait is being generated in the background</Text>
+            {savingProgress > 0 && savingProgress < 100 && (
+              <View style={styles.progressBarTrack}>
+                <View style={[styles.progressBarFill, { width: `${savingProgress}%` }]} />
+              </View>
+            )}
+            <Text style={styles.savingHint}>
+              {savingProgress >= 100 ? 'Done!' : 'This takes about 15-30 seconds'}
+            </Text>
           </View>
         </View>
       )}
@@ -507,4 +535,6 @@ const styles = StyleSheet.create({
   },
   savingText: { color: colors.textPrimary, fontSize: 17, fontWeight: '800', textAlign: 'center' },
   savingHint: { color: colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  progressBarTrack: { width: '100%', height: 6, backgroundColor: colors.border, borderRadius: 3, overflow: 'hidden', marginTop: 4 },
+  progressBarFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
 });
