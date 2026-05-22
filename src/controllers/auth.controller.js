@@ -103,21 +103,21 @@ async function createAvatar(req, res) {
       updateData.selfiePhoto = selfie;
     }
 
-    const user = await prisma.user.update({
+    let user = await prisma.user.update({
       where: { id: req.user.id },
       data: updateData,
     });
+
+    // Generate avatar synchronously so client gets the result
+    const photoUrl = await generateAvatarForUser({ user, avatarClass, avatarBodyStage });
+    if (photoUrl) {
+      user = await prisma.user.update({
+        where: { id: req.user.id },
+        data: { profilePhoto: photoUrl },
+      });
+    }
+
     const { password: _password, ...safeUser } = user;
-
-    // Generate avatar in background using Google AI
-    generateAvatarForUser({ user, avatarClass, avatarBodyStage })
-      .then((photoUrl) => {
-        if (photoUrl) {
-          return prisma.user.update({ where: { id: req.user.id }, data: { profilePhoto: photoUrl } });
-        }
-      })
-      .catch((err) => console.error('Background avatar generation failed:', err.message));
-
     return ok(res, safeUser);
   } catch (error) {
     return fail(res, 500, error.message);

@@ -100,7 +100,7 @@ function ConfettiPiece({ x, startY, color, size, delay, duration, rotation, drif
 
 // ── Main Screen ──────────────────────────────────────────────────────────────
 export default function AvatarCreationScreen({ navigation, route }) {
-  const { createAvatar, refreshMe } = useAuth();
+  const { createAvatar } = useAuth();
   const editing = route.params?.editing ?? false;
   const insets = useSafeAreaInsets();
 
@@ -167,33 +167,23 @@ export default function AvatarCreationScreen({ navigation, route }) {
   const save = async () => {
     try {
       setLoading(true);
-      setSavingMessage('Forging your fighter...');
-      await createAvatar({
+      setSavingMessage('Powering up your avatar...');
+
+      // Fake progress while waiting for server
+      const progressInterval = setInterval(() => {
+        setSavingProgress((prev) => Math.min(prev + 3, 90));
+      }, 1000);
+
+      const result = await createAvatar({
         gender,
         ...(selfieBase64 ? { selfie: selfieBase64 } : {}),
       });
 
-      setSavingMessage('Powering up your avatar...');
-      setSavingProgress(10);
-
-      // Poll until profilePhoto is ready (max ~30s)
-      let avatarReady = false;
-      for (let i = 0; i < 15; i++) {
-        setSavingProgress(Math.min(90, 10 + (i + 1) * 5));
-        await new Promise((r) => setTimeout(r, 2000));
-        try {
-          const updated = await refreshMe();
-          if (updated?.profilePhoto) {
-            avatarReady = true;
-            setSavingProgress(100);
-            break;
-          }
-        } catch {}
-      }
-
+      clearInterval(progressInterval);
+      setSavingProgress(100);
       hapticSuccess();
       setShowConfetti(true);
-      setSavingMessage(avatarReady ? 'Fighter ready! Let\'s go!' : 'Almost there... entering the arena');
+      setSavingMessage(result?.profilePhoto ? 'Fighter ready! Let\'s go!' : 'Almost there... entering the arena');
 
       setTimeout(() => {
         if (editing) {
@@ -205,6 +195,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
     } catch (e) {
       Alert.alert('Avatar', e.message);
       setSavingMessage(null);
+      setSavingProgress(0);
     } finally {
       setLoading(false);
     }
