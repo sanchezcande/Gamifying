@@ -17,7 +17,7 @@ const CLASS_BUILD = {
   WARRIOR:  'extremely muscular and massive build, bodybuilder physique, huge arms and chest',
 };
 
-const STAGE_BUILD = {
+const STAGE_BUILD_MALE = {
   1: 'lean starter build, light muscle definition',
   2: 'beginner athletic build, noticeable tone',
   3: 'intermediate build, solid muscle definition',
@@ -25,10 +25,19 @@ const STAGE_BUILD = {
   5: 'elite build, massive bodybuilder physique',
 };
 
+const STAGE_BUILD_FEMALE = {
+  1: 'slim toned build, light definition, feminine physique',
+  2: 'athletic toned build, visible abs, slim waist, feminine proportions',
+  3: 'fit and strong build, sculpted arms and legs, feminine curves maintained',
+  4: 'very fit and toned, strong shoulders and glutes, lean muscle, feminine silhouette',
+  5: 'elite fitness model physique, defined muscles while keeping feminine shape, strong but graceful',
+};
+
 function buildAvatarPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', bodyStage }) {
   const genderLabel = gender === 'FEMALE' ? 'female' : 'male';
   const stageKey = Number(bodyStage);
-  const build = STAGE_BUILD[stageKey] || CLASS_BUILD[avatarClass] || CLASS_BUILD.ROOKIE;
+  const stageBuilds = gender === 'FEMALE' ? STAGE_BUILD_FEMALE : STAGE_BUILD_MALE;
+  const build = stageBuilds[stageKey] || CLASS_BUILD[avatarClass] || CLASS_BUILD.ROOKIE;
 
   return [
     `Transform this person's photo into a 3D cartoon stylized full-body ${genderLabel} fitness character`,
@@ -84,7 +93,8 @@ async function generateAvatarWithoutSelfie({ gender, avatarClass, bodyStage }) {
 
   const genderLabel = gender === 'FEMALE' ? 'female' : 'male';
   const stageKey = Number(bodyStage);
-  const build = STAGE_BUILD[stageKey] || CLASS_BUILD[avatarClass] || CLASS_BUILD.ROOKIE;
+  const stageBuilds = gender === 'FEMALE' ? STAGE_BUILD_FEMALE : STAGE_BUILD_MALE;
+  const build = stageBuilds[stageKey] || CLASS_BUILD[avatarClass] || CLASS_BUILD.ROOKIE;
 
   const prompt = [
     `ONE single 3D cartoon stylized full-body ${genderLabel} fitness character, exactly one person, centered in frame`,
@@ -144,5 +154,6 @@ module.exports = {
   buildAvatarPrompt,
   getGenAIClient,
   CLASS_BUILD,
-  STAGE_BUILD,
+  STAGE_BUILD_MALE,
+  STAGE_BUILD_FEMALE,
 };
