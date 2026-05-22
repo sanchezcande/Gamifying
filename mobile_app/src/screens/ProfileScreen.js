@@ -164,7 +164,7 @@ export default function ProfileScreen({ navigation }) {
 
         <View style={styles.body}>
 
-          {/* ── Edit Avatar Button ── */}
+          {/* ── Regenerate Avatar Button ── */}
           <AnimatedPressable
             style={styles.editAvatarBtn}
             onPress={() => navigation.navigate('AvatarCreation', {
@@ -175,8 +175,8 @@ export default function ProfileScreen({ navigation }) {
             haptic="light"
             scaleDown={0.97}
           >
-            <Ionicons name="create-outline" size={16} color={colors.primary} />
-            <Text style={styles.editAvatarText}>Edit Avatar</Text>
+            <Ionicons name="refresh-outline" size={16} color={colors.primary} />
+            <Text style={styles.editAvatarText}>Regenerate Avatar</Text>
           </AnimatedPressable>
 
           {/* ── Power + Gains ── */}
