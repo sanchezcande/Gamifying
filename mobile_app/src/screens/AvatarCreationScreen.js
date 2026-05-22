@@ -167,13 +167,13 @@ export default function AvatarCreationScreen({ navigation, route }) {
   const save = async () => {
     try {
       setLoading(true);
-      setSavingMessage('Creating your avatar...');
+      setSavingMessage('Forging your fighter...');
       await createAvatar({
         gender,
         ...(selfieBase64 ? { selfie: selfieBase64 } : {}),
       });
 
-      setSavingMessage('Generating your AI portrait...');
+      setSavingMessage('Powering up your avatar...');
       setSavingProgress(10);
 
       // Poll until profilePhoto is ready (max ~30s)
@@ -193,7 +193,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
 
       hapticSuccess();
       setShowConfetti(true);
-      setSavingMessage(avatarReady ? 'Your avatar is ready!' : 'Avatar will appear shortly');
+      setSavingMessage(avatarReady ? 'Fighter ready! Let\'s go!' : 'Almost there... entering the arena');
 
       setTimeout(() => {
         if (editing) {
@@ -386,7 +386,7 @@ export default function AvatarCreationScreen({ navigation, route }) {
               </View>
             )}
             <Text style={styles.savingHint}>
-              {savingProgress >= 100 ? 'Done!' : 'This takes about 15-30 seconds'}
+              {savingProgress >= 100 ? '💪 LET\'S GO!' : 'Training in progress...'}
             </Text>
           </View>
         </View>
