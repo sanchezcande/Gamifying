@@ -50,7 +50,7 @@ async function generateAvatarFromSelfie({ selfieBase64, selfieMimeType = 'image/
   const prompt = buildAvatarPrompt({ gender, avatarClass, bodyStage });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.0-flash',
     contents: [
       {
         role: 'user',
