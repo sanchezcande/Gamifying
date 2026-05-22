@@ -109,16 +109,39 @@ async function createAvatar(req, res) {
     });
 
     // Generate avatar synchronously so client gets the result
-    const photoUrl = await generateAvatarForUser({ user, avatarClass, avatarBodyStage });
-    if (photoUrl) {
+    let avatarError = null;
+    try {
+      const { generateAvatarFromSelfie, generateAvatarWithoutSelfie } = require('../services/avatarImageService');
+
+      let result;
+      if (user.selfiePhoto) {
+        result = await generateAvatarFromSelfie({
+          selfieBase64: user.selfiePhoto,
+          selfieMimeType: 'image/jpeg',
+          gender: user.avatarGender,
+          avatarClass,
+          bodyStage: avatarBodyStage,
+        });
+      } else {
+        result = await generateAvatarWithoutSelfie({
+          gender: user.avatarGender,
+          avatarClass,
+          bodyStage: avatarBodyStage,
+        });
+      }
+
+      const photoUrl = `data:${result.mimeType};base64,${result.imageBytes}`;
       user = await prisma.user.update({
         where: { id: req.user.id },
         data: { profilePhoto: photoUrl },
       });
+    } catch (err) {
+      console.error('Avatar generation failed:', err);
+      avatarError = err.message;
     }
 
     const { password: _password, ...safeUser } = user;
-    return ok(res, safeUser);
+    return ok(res, { ...safeUser, avatarError });
   } catch (error) {
     return fail(res, 500, error.message);
   }

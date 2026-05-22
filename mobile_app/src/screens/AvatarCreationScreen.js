@@ -183,7 +183,12 @@ export default function AvatarCreationScreen({ navigation, route }) {
       setSavingProgress(100);
       hapticSuccess();
       setShowConfetti(true);
-      setSavingMessage(result?.profilePhoto ? 'Fighter ready! Let\'s go!' : 'Almost there... entering the arena');
+
+      if (result?.avatarError) {
+        setSavingMessage('Avatar saved, but image failed: ' + result.avatarError);
+      } else {
+        setSavingMessage(result?.profilePhoto ? 'Fighter ready! Let\'s go!' : 'Almost there... entering the arena');
+      }
 
       setTimeout(() => {
         if (editing) {
