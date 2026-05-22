@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Modal, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AnimatedPressable from '../components/AnimatedPressable';
 import { useAuth } from '../providers/AuthProvider';
@@ -115,11 +116,16 @@ export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const fadeIn = useRef(new Animated.Value(0)).current;
 
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) loadAvatar(user.id);
+      if (user?.gymId) apiService.getGym(user.gymId).then((r) => setGym(r.data)).catch(() => null);
+    }, [user?.id, user?.gymId])
+  );
+
   useEffect(() => {
-    if (user?.id) loadAvatar(user.id);
-    if (user?.gymId) apiService.getGym(user.gymId).then((r) => setGym(r.data)).catch(() => null);
     Animated.timing(fadeIn, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-  }, [user?.id, user?.gymId]);
+  }, []);
 
   const nextXp = useMemo(() => nextClassThreshold(user?.avatarClass), [user?.avatarClass]);
   const nextClass = nextClassName(user?.avatarClass);
