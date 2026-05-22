@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../providers/AuthProvider';
@@ -116,7 +116,11 @@ export default function AvatarScreen({ navigation }) {
       <Modal visible={showFullBody} transparent animationType="fade">
         <Pressable style={styles.modalBackdrop} onPress={() => setShowFullBody(false)}>
           <View style={styles.modalCard}>
-            <AvatarSprite avatarClass={avatar.class} bodyStage={avatar.bodyStage} size={200} idle />
+            {(avatar.profilePhoto || user?.profilePhoto) ? (
+              <Image source={{ uri: avatar.profilePhoto || user?.profilePhoto }} style={styles.modalImage} resizeMode="contain" />
+            ) : (
+              <AvatarSprite avatarClass={avatar.class} bodyStage={avatar.bodyStage} size={200} idle />
+            )}
             <Text style={styles.modalName}>{user?.name}</Text>
             <Text style={styles.modalStage}>Stage {avatar.bodyStage}</Text>
             <Text style={styles.modalHint}>Tap anywhere to close</Text>
@@ -169,6 +173,7 @@ const styles = StyleSheet.create({
   profileText: { color: '#fff', fontWeight: '800' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: '#0c0c0c', borderRadius: 18, borderWidth: 1, borderColor: '#222', padding: 20, alignItems: 'center', gap: 6 },
+  modalImage: { width: 250, height: 350, borderRadius: 18 },
   modalName: { color: '#fff', fontWeight: '800', fontSize: 18, marginTop: 8 },
   modalStage: { color: colors.textSecondary },
   modalHint: { color: '#555', fontSize: 11, marginTop: 4 }

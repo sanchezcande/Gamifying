@@ -49,9 +49,10 @@ export default function AvatarCircle({ name, avatarClass, bodyStage, size = 'med
           <Image
             source={{ uri: profilePhoto }}
             style={{
-              width: dimension,
-              height: dimension,
-              borderRadius: dimension / 2,
+              width: dimension * 1.4,
+              height: dimension * 2.2,
+              borderRadius: 0,
+              marginTop: dimension * -0.15,
             }}
             resizeMode="cover"
             onLoad={() => setLoading(false)}

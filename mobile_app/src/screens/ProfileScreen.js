@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Modal, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, Modal, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -285,7 +285,11 @@ export default function ProfileScreen({ navigation }) {
       <Modal visible={showFullBody} transparent animationType="fade">
         <AnimatedPressable style={styles.modalBackdrop} onPress={() => setShowFullBody(false)} haptic="light">
           <View style={styles.modalCard}>
-            <AvatarSprite avatarClass={user?.avatarClass} bodyStage={user?.avatarBodyStage} size={180} idle />
+            {user?.profilePhoto ? (
+              <Image source={{ uri: user.profilePhoto }} style={styles.modalImage} resizeMode="contain" />
+            ) : (
+              <AvatarSprite avatarClass={user?.avatarClass} bodyStage={user?.avatarBodyStage} size={180} idle />
+            )}
             <Text style={styles.modalName}>{user?.name}</Text>
             <ClassBadge avatarClass={user?.avatarClass} showIcon />
             <Text style={styles.modalStage}>Stage {bodyStage}</Text>
@@ -399,6 +403,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border,
     padding: 24, alignItems: 'center', gap: 8,
   },
+  modalImage: { width: 250, height: 350, borderRadius: radius.card },
   modalName: { color: colors.textPrimary, fontWeight: '800', fontSize: 18, marginTop: 8 },
   modalStage: { color: colors.textSecondary },
   modalHint: { color: colors.textMuted, fontSize: 11, marginTop: 4 },

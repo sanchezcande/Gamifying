@@ -18,19 +18,19 @@ const CLASS_BUILD = {
 };
 
 const STAGE_BUILD_MALE = {
-  1: 'lean starter build, light muscle definition',
-  2: 'beginner athletic build, noticeable tone',
-  3: 'intermediate build, solid muscle definition',
-  4: 'advanced build, thick muscle volume',
-  5: 'elite build, massive bodybuilder physique',
+  1: 'soft untrained body, some belly fat, no visible muscle, couch potato starting their fitness journey',
+  2: 'slightly leaner, lost some fat but still soft, barely visible arm definition, beginner gains',
+  3: 'noticeable muscle tone, flat stomach, arms and chest showing definition, intermediate gym goer',
+  4: 'muscular and strong, thick arms, visible abs, broad shoulders, clearly athletic and powerful',
+  5: 'extremely muscular bodybuilder physique, massive arms and chest, shredded abs, peak physical form',
 };
 
 const STAGE_BUILD_FEMALE = {
-  1: 'slim toned build, light definition, feminine physique',
-  2: 'athletic toned build, visible abs, slim waist, feminine proportions',
-  3: 'fit and strong build, sculpted arms and legs, feminine curves maintained',
-  4: 'very fit and toned, strong shoulders and glutes, lean muscle, feminine silhouette',
-  5: 'elite fitness model physique, defined muscles while keeping feminine shape, strong but graceful',
+  1: 'soft untrained body, some belly and arm fat, no muscle tone, just starting her fitness journey',
+  2: 'slightly leaner, lost some fat, hints of arm tone, still soft but improving, beginner gains',
+  3: 'athletic and toned, visible abs, slim waist, defined arms, feminine curves, fit and healthy',
+  4: 'very fit and sculpted, strong glutes and shoulders, lean defined muscle, feminine silhouette maintained',
+  5: 'elite fitness model, beautifully sculpted muscle, defined abs and arms, strong but graceful and feminine',
 };
 
 function buildAvatarPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', bodyStage }) {
@@ -41,14 +41,14 @@ function buildAvatarPrompt({ gender = 'MALE', avatarClass = 'ROOKIE', bodyStage 
 
   return [
     `Transform this person's photo into a 3D cartoon stylized full-body ${genderLabel} fitness character`,
-    'Keep their facial features, skin tone, hair color, and overall likeness',
+    'CRITICAL: Keep their EXACT hair color, EXACT eye color, skin tone, and facial features — the cartoon must clearly look like this specific person',
     'Pixar-inspired mobile game art style, chibi proportions with oversized head and expressive face',
     build,
     'wearing a red athletic tank top, black shorts, white sneakers',
-    'standing in a confident pose, front-facing',
+    'standing in a confident pose, front-facing, full body visible from head to feet',
     'clean solid pure black background (#000000), no reflections, no shadows on background',
     'smooth 3D render, vibrant colors, soft shadows',
-    'IMPORTANT: only ONE character, no duplicates, no text, no watermark',
+    'IMPORTANT: only ONE character, no duplicates, no text, no watermark, must match the person hair and eye color exactly',
   ].join('. ') + '.';
 }
 
