@@ -260,11 +260,10 @@ export default function AvatarCreationScreen({ navigation, route }) {
               ref={cameraRef}
               style={styles.camera}
               facing={facing}
-            >
-              <View style={styles.cameraOverlay}>
-                <View style={styles.cameraGuide} />
-              </View>
-            </CameraView>
+            />
+            <View style={styles.cameraOverlay}>
+              <View style={styles.cameraGuide} />
+            </View>
             <Text style={styles.cameraHint}>Center your face in the frame</Text>
           </View>
         )}
@@ -407,7 +406,7 @@ const styles = StyleSheet.create({
   // Camera
   cameraContainer: { flex: 1, margin: 16, borderRadius: themeRadius.cardLarge, overflow: 'hidden' },
   camera: { flex: 1 },
-  cameraOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  cameraOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   cameraGuide: {
     width: 200,
     height: 260,
