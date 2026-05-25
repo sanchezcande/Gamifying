@@ -1025,7 +1025,7 @@ const vb = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function BattleScreen() {
   const { user, refreshMe } = useAuth();
-  const { battleHistory, loadHistory, challenge } = useBattleData();
+  const { battleHistory, loadHistory, challenge, pendingChallenges, loadPending, respondToChallenge, declineChallenge } = useBattleData();
   const [members, setMembers]               = useState([]);
   const [loading, setLoading]               = useState(true);
   const [challengeTarget, setChallengeTarget] = useState(null);
@@ -1033,6 +1033,8 @@ export default function BattleScreen() {
   const [battleState, setBattleState]       = useState({ open: false, result: null, target: null, battleId: null });
   const [battlesRemaining, setBattlesRemaining] = useState(null);
   const [monthlyAthletes, setMonthlyAthletes] = useState([]);
+  const [respondTarget, setRespondTarget] = useState(null);
+  const [responding, setResponding] = useState(false);
 
   const load = async () => {
     if (!user?.gymId || !user?.id) return;
@@ -1043,6 +1045,7 @@ export default function BattleScreen() {
         loadHistory(user.id),
         apiService.getBattlesRemaining(),
         apiService.getMonthlyAthletes(user.gymId).catch(() => ({ data: [] })),
+        loadPending(),
       ]);
       setMembers((membersRes.data || []).filter(m => m.id && m.id !== user.id));
       setBattlesRemaining(remainingRes.data);
@@ -1061,13 +1064,29 @@ export default function BattleScreen() {
     try {
       setFighting(true);
       const result = await challenge(challengeTarget.id, moves);
-      const target = challengeTarget;
       setChallengeTarget(null);
-      setBattleState({ open: true, result, target, battleId: result.battleId || null });
+      // Now it's pending — show confirmation instead of battle
+      Alert.alert('Desafío Enviado', `Le mandaste el desafío a ${challengeTarget.name}. Cuando acepte, se resuelve la pelea.`);
+      await load(); // Refresh
     } catch (e) {
       Alert.alert('Battle', e.message);
     } finally {
       setFighting(false);
+    }
+  };
+
+  const onRespond = async (moves) => {
+    if (!respondTarget) return;
+    try {
+      setResponding(true);
+      const result = await respondToChallenge(respondTarget.id, moves);
+      const target = respondTarget;
+      setRespondTarget(null);
+      setBattleState({ open: true, result, target, battleId: result.battleId || null });
+    } catch (e) {
+      Alert.alert('Battle', e.message);
+    } finally {
+      setResponding(false);
     }
   };
 
@@ -1096,6 +1115,63 @@ export default function BattleScreen() {
         data={members}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+        ListHeaderComponent={
+          <>
+            {pendingChallenges.length > 0 && (
+              <View style={{ marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <Ionicons name="notifications" size={16} color="#FF6B35" />
+                  <Text style={[styles.subTitle, { color: '#FF6B35', marginBottom: 0 }]}>
+                    DESAFÍOS PENDIENTES ({pendingChallenges.length})
+                  </Text>
+                </View>
+                {pendingChallenges.map((ch) => {
+                  const challenger = ch.challenger;
+                  const move = CLASS_MOVES[challenger?.avatarClass] || CLASS_MOVES.ROOKIE;
+                  const timeLeft = ch.expiresAt
+                    ? Math.max(0, Math.floor((new Date(ch.expiresAt) - Date.now()) / 3600000))
+                    : null;
+                  return (
+                    <View key={ch.id} style={[styles.memberRow, { borderLeftColor: '#FF6B35', borderLeftWidth: 3, backgroundColor: '#FF6B3508' }]}>
+                      <AvatarCircle
+                        name={challenger?.name}
+                        avatarClass={challenger?.avatarClass}
+                        bodyStage={challenger?.avatarBodyStage}
+                        size="small"
+                        profilePhoto={challenger?.profilePhoto}
+                      />
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.memberName}>{challenger?.name}</Text>
+                        <Text style={[styles.moveName, { color: '#FF6B35' }]}>⚔️ Te desafió a pelear</Text>
+                        {timeLeft !== null && (
+                          <Text style={styles.memberMeta}>⏱ {timeLeft}h restantes</Text>
+                        )}
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <AnimatedPressable
+                          style={[styles.fightBtn, { borderColor: '#CC4444' }]}
+                          onPress={() => declineChallenge(ch.id)}
+                          haptic="light"
+                          scaleDown={0.92}
+                        >
+                          <Ionicons name="close" size={16} color="#CC4444" />
+                        </AnimatedPressable>
+                        <AnimatedPressable
+                          style={[styles.fightBtn, { borderColor: '#22C55E', backgroundColor: '#22C55E10' }]}
+                          onPress={() => setRespondTarget({ ...ch, name: challenger?.name, avatarClass: challenger?.avatarClass, avatarBodyStage: challenger?.avatarBodyStage, statPower: challenger?.statPower, profilePhoto: challenger?.profilePhoto })}
+                          haptic="medium"
+                          scaleDown={0.92}
+                        >
+                          <Text style={[styles.fightText, { color: '#22C55E' }]}>ACEPTAR</Text>
+                        </AnimatedPressable>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        }
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="shield-outline" size={40} color={colors.textDim} />
@@ -1207,6 +1283,15 @@ export default function BattleScreen() {
         fighting={fighting}
         onCancel={() => setChallengeTarget(null)}
         onFight={onFight}
+      />
+
+      <MovePickerModal
+        visible={!!respondTarget}
+        target={respondTarget}
+        me={user}
+        fighting={responding}
+        onCancel={() => setRespondTarget(null)}
+        onFight={onRespond}
       />
 
       {battleState.battleId ? (

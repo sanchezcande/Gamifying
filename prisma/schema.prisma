@@ -154,22 +154,27 @@ model UserItem {
 }
 
 model Battle {
-  id                    String   @id @default(cuid())
+  id                    String            @id @default(cuid())
   challengerId          String
   defenderId            String
   gymId                 String
   challengerProbability Float
   defenderProbability   Float
-  winnerId              String
-  gcReward              Int      @default(50)
-  xpReward              Int      @default(30)
+  winnerId              String?
+  gcReward              Int               @default(50)
+  xpReward              Int               @default(30)
   videoUrl              String?
   videoStatus           BattleVideoStatus @default(NONE)
-  createdAt             DateTime @default(now())
-  challenger            User     @relation("Challenger", fields: [challengerId], references: [id])
-  defender              User     @relation("Defender", fields: [defenderId], references: [id])
-  gym                   Gym      @relation(fields: [gymId], references: [id])
-  winner                User     @relation("BattleWinner", fields: [winnerId], references: [id])
+  status                BattleStatus      @default(RESOLVED)
+  challengerMoves       Json?
+  defenderMoves         Json?
+  roundResults          Json?
+  expiresAt             DateTime?
+  createdAt             DateTime          @default(now())
+  challenger            User              @relation("Challenger", fields: [challengerId], references: [id])
+  defender              User              @relation("Defender", fields: [defenderId], references: [id])
+  gym                   Gym               @relation(fields: [gymId], references: [id])
+  winner                User?             @relation("BattleWinner", fields: [winnerId], references: [id])
 
   @@index([gymId, createdAt])
 }
@@ -376,4 +381,9 @@ enum BattleVideoStatus {
   PROCESSING
   DONE
   FAILED
+}
+
+enum BattleStatus {
+  PENDING_MOVES
+  RESOLVED
 }

@@ -1,12 +1,12 @@
-const { getGenAIClient, CLASS_BUILD } = require('./avatarImageService');
+const { getGenAIClient, CLASS_BUILD, STAGE_BUILD_MALE, STAGE_BUILD_FEMALE } = require('./avatarImageService');
 
 const MOVE_DESCRIPTIONS = {
-  ATTACK: 'throws a powerful punch',
-  DEFEND: 'blocks with arms crossed in defensive stance',
-  PROTEIN_SURGE: 'glows with golden energy and unleashes a massive power strike',
-  CREATINE_BLAST: 'charges up with blue lightning and delivers an explosive hit',
-  PREWORKOUT_RUSH: 'dashes forward at lightning speed with a rapid combo attack',
-  AURA_BURST: 'radiates green healing aura while launching a spinning kick',
+  ATTACK: 'lunges forward and throws a devastating straight punch that connects with full force, visible shockwave rippling from impact',
+  DEFEND: 'plants feet wide and crosses arms in an iron guard stance, a translucent energy shield briefly flashes on impact',
+  PROTEIN_SURGE: 'muscles swell and glow with intense golden energy, veins pulsing with light, then unleashes a massive overhead power slam that cracks the ground',
+  CREATINE_BLAST: 'body crackles with blue electric lightning arcs, eyes glow bright blue, then fires a concentrated beam of raw energy from both fists',
+  PREWORKOUT_RUSH: 'body blurs with extreme speed leaving afterimages, teleports behind opponent and delivers a lightning-fast five-hit combo in under a second',
+  AURA_BURST: 'hovers off the ground surrounded by a swirling green healing aura, wounds visibly close, then channels all energy into a devastating spinning roundhouse kick',
 };
 
 function buildBattleVideoPrompt({ challenger, defender, rounds, winnerId }) {
@@ -15,23 +15,36 @@ function buildBattleVideoPrompt({ challenger, defender, rounds, winnerId }) {
   const cGender = challenger.avatarGender === 'FEMALE' ? 'female' : 'male';
   const dGender = defender.avatarGender === 'FEMALE' ? 'female' : 'male';
 
+  // Use stage builds for more detailed body descriptions
+  const cStageBuilds = challenger.avatarGender === 'FEMALE' ? STAGE_BUILD_FEMALE : STAGE_BUILD_MALE;
+  const dStageBuilds = defender.avatarGender === 'FEMALE' ? STAGE_BUILD_FEMALE : STAGE_BUILD_MALE;
+  const cBuild = cStageBuilds[challenger.avatarBodyStage] || cClass;
+  const dBuild = dStageBuilds[defender.avatarBodyStage] || dClass;
+
   const roundDescriptions = rounds.map((r) => {
     const cMove = MOVE_DESCRIPTIONS[r.challengerMove] || 'attacks';
     const dMove = MOVE_DESCRIPTIONS[r.defenderMove] || 'attacks';
-    return `Round ${r.round}: Left character ${cMove}. Right character ${dMove}.`;
+    const cDmg = r.challengerDamageDealt || 0;
+    const dDmg = r.defenderDamageDealt || 0;
+    const bigHit = Math.max(cDmg, dDmg) > 25;
+    const roundIntensity = r.round === 3 ? 'with maximum intensity and dramatic slow-motion on the final blow' : '';
+    return `Round ${r.round}: Left fighter ${cMove}. Right fighter ${dMove}. ${bigHit ? 'The impact is massive, camera shakes.' : ''} ${roundIntensity}`;
   }).join(' ');
 
   const winnerSide = winnerId === challenger.id ? 'left' : 'right';
+  const loserSide = winnerId === challenger.id ? 'right' : 'left';
 
   return [
-    `Epic 3D cartoon battle animation between two fitness characters in a gym arena`,
-    `Left: ${cGender} character, ${cClass}`,
-    `Right: ${dGender} character, ${dClass}`,
-    `Pixar-inspired mobile game art style, chibi proportions, vibrant colors`,
+    `Cinematic 3D animated battle between two fighting game characters in a dramatic gym arena with neon lights and energy particles`,
+    `Art style: Pixar meets Street Fighter, stylized 3D with vibrant colors, dynamic lighting, anime-style energy effects and speed lines`,
+    `Left fighter: ${cGender}, ${cBuild}, confident fighting stance`,
+    `Right fighter: ${dGender}, ${dBuild}, aggressive fighting stance`,
+    `The battle unfolds in 3 intense rounds:`,
     roundDescriptions,
-    `The ${winnerSide} character wins with a victory pose at the end`,
-    `Dynamic camera angles, dramatic lighting, anime-style action effects`,
-    `Smooth animation, no text, no watermark`,
+    `After the final blow, the ${loserSide} fighter falls to their knees defeated`,
+    `The ${winnerSide} fighter strikes a powerful victory pose, camera orbits around them as energy particles swirl, dramatic backlighting`,
+    `Camera work: dynamic angles, close-ups on impacts, slow-motion on special moves, wide shots for the arena`,
+    `No text, no watermark, no UI elements. Smooth 60fps animation, 8 seconds total`,
   ].join('. ') + '.';
 }
 
@@ -41,11 +54,14 @@ async function generateBattleVideo({ challenger, defender, rounds, winnerId }) {
 
   const prompt = buildBattleVideoPrompt({ challenger, defender, rounds, winnerId });
 
-  // Build reference images from avatar profile photos (base64 data URIs)
+  // Build reference images — prefer AI-generated avatar (baseAvatarPhoto) over raw selfie (profilePhoto)
   const referenceImages = [];
 
-  if (challenger.profilePhoto && challenger.profilePhoto.startsWith('data:')) {
-    const [meta, data] = challenger.profilePhoto.split(',');
+  const challengerPhoto = challenger.baseAvatarPhoto || challenger.profilePhoto;
+  const defenderPhoto = defender.baseAvatarPhoto || defender.profilePhoto;
+
+  if (challengerPhoto && challengerPhoto.startsWith('data:')) {
+    const [meta, data] = challengerPhoto.split(',');
     const mimeType = meta.match(/data:(.*?);/)?.[1] || 'image/png';
     referenceImages.push({
       image: { imageBytes: data, mimeType },
@@ -53,8 +69,8 @@ async function generateBattleVideo({ challenger, defender, rounds, winnerId }) {
     });
   }
 
-  if (defender.profilePhoto && defender.profilePhoto.startsWith('data:')) {
-    const [meta, data] = defender.profilePhoto.split(',');
+  if (defenderPhoto && defenderPhoto.startsWith('data:')) {
+    const [meta, data] = defenderPhoto.split(',');
     const mimeType = meta.match(/data:(.*?);/)?.[1] || 'image/png';
     referenceImages.push({
       image: { imageBytes: data, mimeType },
@@ -68,6 +84,7 @@ async function generateBattleVideo({ challenger, defender, rounds, winnerId }) {
     config: {
       ...(referenceImages.length > 0 ? { referenceImages } : {}),
       aspectRatio: '16:9',
+      durationSeconds: 8,
     },
   });
 

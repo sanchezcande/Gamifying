@@ -204,6 +204,18 @@ class ApiService {
   async getMonthlyAthletes(gymId) {
     return this.unwrap(await this.client.get(`/wods/monthly/${gymId}`));
   }
+
+  async getPendingChallenges() {
+    return this.unwrap(await this.client.get('/battles/pending'));
+  }
+
+  async respondToChallenge(battleId, moves) {
+    return this.unwrap(await this.client.post(`/battles/${battleId}/respond`, { moves }));
+  }
+
+  async declineChallenge(battleId) {
+    return this.unwrap(await this.client.post(`/battles/${battleId}/decline`));
+  }
 }
 
 const apiService = new ApiService();

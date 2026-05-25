@@ -8,6 +8,7 @@ export function BattleProvider({ children }) {
   const [battleHistory, setBattleHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [pendingChallenges, setPendingChallenges] = useState([]);
 
   const challenge = async (defenderId, moves) => {
     try {
@@ -21,6 +22,41 @@ export function BattleProvider({ children }) {
       throw e;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPending = async () => {
+    try {
+      const result = await apiService.getPendingChallenges();
+      setPendingChallenges(result.data || []);
+      return result.data || [];
+    } catch (e) {
+      setPendingChallenges([]);
+      return [];
+    }
+  };
+
+  const respondToChallenge = async (battleId, moves) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await apiService.respondToChallenge(battleId, moves);
+      setBattleResult(result.data);
+      return result.data;
+    } catch (e) {
+      setError(e.message);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const declineChallenge = async (battleId) => {
+    try {
+      await apiService.declineChallenge(battleId);
+      setPendingChallenges(prev => prev.filter(c => c.id !== battleId));
+    } catch (e) {
+      throw e;
     }
   };
 
@@ -39,7 +75,7 @@ export function BattleProvider({ children }) {
     }
   };
 
-  const value = useMemo(() => ({ battleResult, battleHistory, loading, error, challenge, loadHistory }), [battleResult, battleHistory, loading, error]);
+  const value = useMemo(() => ({ battleResult, battleHistory, loading, error, challenge, loadHistory, pendingChallenges, loadPending, respondToChallenge, declineChallenge }), [battleResult, battleHistory, loading, error, pendingChallenges]);
 
   return <BattleContext.Provider value={value}>{children}</BattleContext.Provider>;
 }

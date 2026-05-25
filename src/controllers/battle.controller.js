@@ -57,41 +57,88 @@ async function challenge(req, res) {
       }
     }
 
-    const rewards = { gcReward: 50, xpReward: 30 };
     const { challengerProbability, defenderProbability } = calculateProbabilities(challenger, defender);
 
-    // Get active supplements for both players
-    const [challengerSupps, defenderSupps] = await Promise.all([
-      getActiveSupplements(challenger.id),
-      getActiveSupplements(defender.id),
-    ]);
+    // Get active supplements for challenger
+    const challengerSupps = await getActiveSupplements(challenger.id);
     const challengerCategories = challengerSupps.map(s => s.shopItem.category);
-    const defenderCategories = defenderSupps.map(s => s.shopItem.category);
 
-    // Validate challenger moves (from request body) or fall back to AI
+    // Validate challenger moves from request body
     let challengerMoves = req.body?.moves;
     if (!challengerMoves || !validateMoves(challengerMoves, challengerCategories)) {
       challengerMoves = pickAIMoves(challenger, challengerCategories);
     }
 
-    // Defender is always AI for now (MVP)
-    const defenderMoves = pickAIMoves(defender, defenderCategories);
+    // Create battle with PENDING_MOVES status — defender hasn't picked moves yet
+    const battle = await prisma.battle.create({
+      data: {
+        challengerId: challenger.id,
+        defenderId: defender.id,
+        gymId: challenger.gymId,
+        challengerProbability,
+        defenderProbability,
+        winnerId: null,
+        status: 'PENDING_MOVES',
+        challengerMoves: challengerMoves,
+        defenderMoves: null,
+        roundResults: null,
+        videoStatus: 'NONE',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        gcReward: 50,
+        xpReward: 30,
+      }
+    });
+
+    return ok(res, {
+      battleId: battle.id,
+      message: 'Challenge sent',
+    });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+async function respondToChallenge(req, res) {
+  try {
+    const { battleId } = req.params;
+    const battle = await prisma.battle.findUnique({ where: { id: battleId } });
+
+    if (!battle) return fail(res, 404, 'Battle not found');
+    if (battle.status !== 'PENDING_MOVES') return fail(res, 400, 'Battle already resolved');
+    if (battle.defenderId !== req.user.id) return fail(res, 403, 'You are not the defender');
+    if (battle.expiresAt && new Date() > new Date(battle.expiresAt)) {
+      return fail(res, 410, 'Challenge has expired');
+    }
+
+    const challenger = await prisma.user.findUnique({ where: { id: battle.challengerId } });
+    const defender = await prisma.user.findUnique({ where: { id: battle.defenderId } });
+
+    // Get active supplements for defender
+    const defenderSupps = await getActiveSupplements(defender.id);
+    const defenderCategories = defenderSupps.map(s => s.shopItem.category);
+
+    // Validate defender moves from request body
+    let defenderMoves = req.body?.moves;
+    if (!defenderMoves || !validateMoves(defenderMoves, defenderCategories)) {
+      defenderMoves = pickAIMoves(defender, defenderCategories);
+    }
+
+    const challengerMoves = battle.challengerMoves;
 
     // Resolve battle round by round
     const battleResolution = resolveBattle(challenger, defender, challengerMoves, defenderMoves);
     const winnerId = battleResolution.winnerId;
+    const rewards = { gcReward: battle.gcReward, xpReward: battle.xpReward };
 
     const battleResult = await prisma.$transaction(async (tx) => {
-      await tx.battle.create({
+      await tx.battle.update({
+        where: { id: battle.id },
         data: {
-          challengerId: challenger.id,
-          defenderId: defender.id,
-          gymId: challenger.gymId,
-          challengerProbability,
-          defenderProbability,
+          status: 'RESOLVED',
+          defenderMoves: defenderMoves,
+          roundResults: battleResolution.rounds,
           winnerId,
           videoStatus: process.env.GOOGLE_API_KEY ? 'PENDING' : 'NONE',
-          ...rewards
         }
       });
 
@@ -100,7 +147,7 @@ async function challenge(req, res) {
         ...winner,
         xp: winner.xp + rewards.xpReward,
         gymCoins: winner.gymCoins + rewards.gcReward,
-        currentMonthXp: winner.currentMonthXp + rewards.xpReward
+        currentMonthXp: winner.currentMonthXp + rewards.xpReward,
       };
       const avatar = getAvatarProgress(next);
       const shouldUpdateImage =
@@ -125,18 +172,12 @@ async function challenge(req, res) {
       enqueueAvatarRender({
         user: battleResult.winner,
         avatarClass: battleResult.avatar.avatarClass,
-        avatarBodyStage: battleResult.avatar.avatarBodyStage
+        avatarBodyStage: battleResult.avatar.avatarBodyStage,
       });
     }
 
-    // Find the battle we just created to get its ID
-    const createdBattle = await prisma.battle.findFirst({
-      where: { challengerId: challenger.id, defenderId: defender.id, winnerId },
-      orderBy: { createdAt: 'desc' },
-    });
-
     // Enqueue battle video generation in background
-    if (createdBattle && process.env.GOOGLE_API_KEY) {
+    if (process.env.GOOGLE_API_KEY) {
       generateBattleVideo({
         challenger, defender,
         rounds: battleResolution.rounds,
@@ -145,23 +186,23 @@ async function challenge(req, res) {
         .then((video) => {
           const videoUrl = video.uri || video.url || null;
           return prisma.battle.update({
-            where: { id: createdBattle.id },
+            where: { id: battle.id },
             data: { videoUrl, videoStatus: 'DONE' },
           });
         })
         .catch((err) => {
           console.error('Battle video generation failed:', err.message);
           prisma.battle.update({
-            where: { id: createdBattle.id },
+            where: { id: battle.id },
             data: { videoStatus: 'FAILED' },
           }).catch(() => {});
         });
     }
 
     return ok(res, {
-      battleId: createdBattle?.id || null,
-      challengerProbability,
-      defenderProbability,
+      battleId: battle.id,
+      challengerProbability: battle.challengerProbability,
+      defenderProbability: battle.defenderProbability,
       winnerId,
       gcEarned: rewards.gcReward,
       xpEarned: rewards.xpReward,
@@ -169,6 +210,61 @@ async function challenge(req, res) {
       challengerMoves,
       defenderMoves,
     });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+async function pendingChallenges(req, res) {
+  try {
+    const battles = await prisma.battle.findMany({
+      where: {
+        defenderId: req.user.id,
+        status: 'PENDING_MOVES',
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        challenger: {
+          select: {
+            id: true,
+            name: true,
+            avatarClass: true,
+            avatarBodyStage: true,
+            statPower: true,
+            profilePhoto: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const data = battles.map(b => ({
+      id: b.id,
+      challenger: b.challenger,
+      challengerProbability: b.challengerProbability,
+      defenderProbability: b.defenderProbability,
+      expiresAt: b.expiresAt,
+      createdAt: b.createdAt,
+    }));
+
+    return ok(res, data);
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+async function declineChallenge(req, res) {
+  try {
+    const { battleId } = req.params;
+    const battle = await prisma.battle.findUnique({ where: { id: battleId } });
+
+    if (!battle) return fail(res, 404, 'Battle not found');
+    if (battle.defenderId !== req.user.id) return fail(res, 403, 'You are not the defender');
+    if (battle.status !== 'PENDING_MOVES') return fail(res, 400, 'Battle already resolved');
+
+    await prisma.battle.delete({ where: { id: battle.id } });
+
+    return ok(res, { message: 'Challenge declined' });
   } catch (error) {
     return fail(res, 500, error.message);
   }
@@ -187,7 +283,8 @@ async function history(req, res) {
 
     const battles = await prisma.battle.findMany({
       where: {
-        OR: [{ challengerId: userId }, { defenderId: userId }]
+        OR: [{ challengerId: userId }, { defenderId: userId }],
+        status: 'RESOLVED',
       },
       include: {
         challenger: { select: { id: true, name: true } },
@@ -222,7 +319,7 @@ async function leaderboard(req, res) {
 
     const grouped = await prisma.battle.groupBy({
       by: ['winnerId'],
-      where: { gymId, createdAt: { gte: monthStart } },
+      where: { gymId, createdAt: { gte: monthStart }, status: 'RESOLVED', winnerId: { not: null } },
       _count: { winnerId: true }
     });
 
@@ -284,4 +381,4 @@ async function battleVideo(req, res) {
   }
 }
 
-module.exports = { challenge, history, leaderboard, battlesRemaining, battleVideo };
+module.exports = { challenge, respondToChallenge, pendingChallenges, declineChallenge, history, leaderboard, battlesRemaining, battleVideo };
