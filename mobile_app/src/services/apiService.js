@@ -2,7 +2,7 @@ import axios from 'axios';
 import { clearToken, getToken } from '../utils/storage';
 
 // Set your backend URL here — update when deploying to Railway
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.10.43.110:3000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://gamifying-production.up.railway.app/api';
 
 class ApiService {
   constructor() {

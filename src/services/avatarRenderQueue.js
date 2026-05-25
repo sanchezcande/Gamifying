@@ -105,8 +105,14 @@ async function processOneJob() {
       return true;
     }
 
+    const updateData = { profilePhoto: url };
+    // Save as base avatar on first generation (when no base exists yet)
+    if (!user.baseAvatarPhoto) {
+      updateData.baseAvatarPhoto = url;
+    }
+
     await prisma.$transaction([
-      prisma.user.update({ where: { id: user.id }, data: { profilePhoto: url } }),
+      prisma.user.update({ where: { id: user.id }, data: updateData }),
       prisma.avatarRenderJob.update({
         where: { id: job.id },
         data: { status: 'DONE', lastError: null, lockedAt: null }

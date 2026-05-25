@@ -1,10 +1,10 @@
 const { getAvatarClass } = require('./xpService');
 
 function getBodyStage(totalStats) {
-  if (totalStats >= 251) return 5;
-  if (totalStats >= 151) return 4;
-  if (totalStats >= 81) return 3;
-  if (totalStats >= 31) return 2;
+  if (totalStats >= 250) return 5;
+  if (totalStats >= 150) return 4;
+  if (totalStats >= 75) return 3;
+  if (totalStats >= 25) return 2;
   return 1;
 }
 
