@@ -18,19 +18,19 @@ const CLASS_BUILD = {
 };
 
 const STAGE_BUILD_MALE = {
-  1: 'average skinny-fat body, small soft belly, thin arms with no muscle, narrow shoulders, normal build, a regular guy who doesnt exercise',
-  2: 'belly slightly smaller, arms a tiny bit thicker with hint of shape, shoulders a touch wider, starting to look like someone who recently joined a gym',
-  3: 'belly gone flat, arms noticeably thicker with bicep shape visible, chest starting to push the suit out, shoulders wider, waist tighter, clearly been training for a while',
-  4: 'fit and strong, arms thick and muscular filling the sleeves, chest broad and solid, shoulders wide, torso firm with narrow waist, athletic powerful build',
-  5: 'very muscular, arms large and powerful stretching the sleeves, chest and shoulders wide filling the suit tight, narrow hard waist, strong neck, peak warrior physique',
+  1: 'NARROW and THIN body — skinny arms like sticks, narrow chest, small shoulders, suit hangs loose everywhere because the body is too thin to fill it, no muscle mass at all, looks fragile',
+  2: 'slightly WIDER than stage 1 — arms a bit thicker starting to fill the sleeves, shoulders slightly wider, chest a tiny bit bigger, suit fits a little better but still loose, early beginner gains',
+  3: 'MEDIUM ATHLETIC build — arms clearly thicker with visible bicep shape pushing the sleeves, chest noticeably wider filling the suit, shoulders broader, suit fits snug now, clear difference from before',
+  4: 'LARGE STRONG build — arms thick and muscular stretching the sleeves tight, broad powerful chest pushing the suit forward, wide shoulders, suit is tight everywhere, clearly powerful',
+  5: 'VERY LARGE MUSCULAR build — arms huge and round stretching the sleeves to the limit, massive wide chest and shoulders making the suit skin-tight, thick strong neck, suit can barely contain the muscle, peak warrior',
 };
 
 const STAGE_BUILD_FEMALE = {
-  1: 'average untrained body, slightly soft midsection, thin arms without tone, normal waist, a regular woman who doesnt exercise',
-  2: 'midsection a bit firmer, arms slightly more defined with a hint of shape, waist a little more defined, beginning to look like someone who works out',
-  3: 'flat stomach, arms with clear tone and shape through the sleeves, waist slim and defined with feminine curves, legs with visible shape, looks fit and active',
-  4: 'toned athletic body, arms with lean muscle visible through sleeves, slim defined waist with curves, legs strong and toned, elegant dedicated athlete',
-  5: 'peak fitness, lean sculpted arms and shoulders through the suit, slim athletic waist, strong graceful legs, beautiful feminine warrior, powerful but elegant',
+  1: 'THIN and SOFT body — skinny arms with no shape, narrow shoulders, flat chest, suit hangs loose because the body is thin and untrained, no muscle definition anywhere',
+  2: 'slightly MORE SHAPE than stage 1 — arms a bit less thin with a hint of tone, shoulders a touch wider, suit fits a little better, subtle early signs of training',
+  3: 'ATHLETIC TONED build — arms with clear visible shape and tone filling the sleeves, waist slim and defined with feminine curves, legs with visible shape, suit fits nicely on a fit body',
+  4: 'FIT SCULPTED build — arms toned with lean muscle visible through sleeves, defined shoulders, slim waist with athletic feminine curves, strong shaped legs, suit fits snug on a strong body, elegant athlete',
+  5: 'PEAK FITNESS build — arms and shoulders lean and sculpted through the suit, slim powerful waist, strong graceful legs, suit fits perfectly on a trained feminine warrior body, powerful but elegant',
 };
 
 const OUTFIT = 'wearing a sleek fitted black bodysuit with dark red accent stitching along the seams and a front zipper, tactical video game combat suit style, LONG SLEEVES covering both arms completely down to the wrists, full leg coverage, black boots. The suit must have LONG SLEEVES in every image — never sleeveless, never short sleeves, never bare arms';
