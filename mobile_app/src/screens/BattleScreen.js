@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Easing, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Dimensions, Easing, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -87,7 +87,7 @@ const SUPPLEMENT_TO_MOVE = {
 };
 
 // ─── Move Picker Modal ───────────────────────────────────────────────────────
-function MovePickerModal({ visible, target, me, onCancel, onFight, fighting }) {
+function MovePickerModal({ visible, target, me, onCancel, onFight, onQuickFight, fighting }) {
   const insets = useSafeAreaInsets();
   const [moves, setMoves] = useState([null, null, null]);
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -132,6 +132,14 @@ function MovePickerModal({ visible, target, me, onCancel, onFight, fighting }) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
     onFight(moves);
+  };
+
+  const handleQuickFight = () => {
+    if (!allPicked || fighting || !onQuickFight) return;
+    if (Haptics && Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+    onQuickFight(moves);
   };
 
   if (!visible) return null;
@@ -228,17 +236,32 @@ function MovePickerModal({ visible, target, me, onCancel, onFight, fighting }) {
               </View>
             )}
 
-            {/* Fight button */}
+            {/* Fight buttons */}
+            {onQuickFight && (
+              <AnimatedPressable
+                style={[mp.fightBtn, (!allPicked || fighting) && { opacity: 0.4 }]}
+                onPress={handleQuickFight}
+                disabled={!allPicked || fighting}
+                haptic={null}
+                scaleDown={0.95}
+              >
+                <LinearGradient colors={allPicked ? ['#E00', '#900'] : [colors.border, colors.borderLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={mp.fightBtnGrad}>
+                  <Ionicons name="flash" size={20} color="#fff" />
+                  <Text style={mp.fightBtnText}>{fighting ? 'PELEANDO...' : allPicked ? 'PELEA RÁPIDA vs IA' : 'ELEGÍ LOS 3 MOVIMIENTOS'}</Text>
+                </LinearGradient>
+              </AnimatedPressable>
+            )}
+
             <AnimatedPressable
-              style={[mp.fightBtn, (!allPicked || fighting) && { opacity: 0.4 }]}
+              style={[mp.fightBtn, (!allPicked || fighting) && { opacity: 0.4 }, { marginTop: onQuickFight ? 0 : 8 }]}
               onPress={handleFight}
               disabled={!allPicked || fighting}
               haptic={null}
               scaleDown={0.95}
             >
-              <LinearGradient colors={allPicked ? ['#E00', '#900'] : [colors.border, colors.borderLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={mp.fightBtnGrad}>
-                <Ionicons name="flash" size={20} color="#fff" />
-                <Text style={mp.fightBtnText}>{fighting ? 'PELEANDO...' : allPicked ? 'PELEAR' : 'ELEGÍ LOS 3 MOVIMIENTOS'}</Text>
+              <LinearGradient colors={allPicked ? ['#333', '#111'] : [colors.border, colors.borderLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={mp.fightBtnGrad}>
+                <Ionicons name="people" size={18} color="#fff" />
+                <Text style={mp.fightBtnText}>{fighting ? 'ENVIANDO...' : allPicked ? 'DESAFIAR (PvP)' : 'ELEGÍ LOS 3 MOVIMIENTOS'}</Text>
               </LinearGradient>
             </AnimatedPressable>
 
@@ -798,21 +821,25 @@ function BattleModal({ open, result, me, target, onClose }) {
 // ─── Video Battle Modal (AI-generated battle video experience) ────────────────
 const HYPE_MESSAGES = [
   'PREPARANDO LA ARENA',
-  'LOS LUCHADORES SE CALIENTAN',
-  'GENERANDO BATALLA EPICA',
+  'ANALIZANDO MOVIMIENTOS',
+  'GENERANDO BATALLA ÉPICA',
   'ESTO SE VA A PONER BUENO',
-  'CARGANDO MOVIMIENTOS ESPECIALES',
-  'LA ARENA ESTA LISTA',
+  'CARGANDO PODERES ESPECIALES',
+  'LA ARENA ESTÁ LISTA',
 ];
 
 function VideoBattleModal({ open, battleId, result, me, target, onClose }) {
-  const [phase, setPhase] = useState('loading'); // loading | playing | result
-  const [videoUrl, setVideoUrl] = useState(null);
+  const [phase, setPhase] = useState('loading'); // loading | round1 | round2 | round3 | transition | result
+  const [roundUrls, setRoundUrls] = useState({});
+  const [currentRound, setCurrentRound] = useState(0);
   const [hypeIdx, setHypeIdx] = useState(0);
   const videoRef = useRef(null);
   const pollRef = useRef(null);
   const hypeRef = useRef(null);
   const timeoutRef = useRef(null);
+  const roundUrlsRef = useRef({});
+  const phaseRef = useRef('loading');
+  const currentRoundRef = useRef(0);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const resultOpacity = useRef(new Animated.Value(0)).current;
@@ -834,6 +861,7 @@ function VideoBattleModal({ open, battleId, result, me, target, onClose }) {
   const showResults = () => {
     cleanup();
     setPhase('result');
+    phaseRef.current = 'result';
     if (Haptics && Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
@@ -845,11 +873,39 @@ function VideoBattleModal({ open, battleId, result, me, target, onClose }) {
     ]).start();
   };
 
+  const playRound = (roundNum) => {
+    const url = roundUrlsRef.current[String(roundNum)];
+    setCurrentRound(roundNum);
+    currentRoundRef.current = roundNum;
+    if (url) {
+      setPhase(`round${roundNum}`);
+      phaseRef.current = `round${roundNum}`;
+    } else {
+      // Video not ready yet — show transition screen and keep polling
+      setPhase('transition');
+      phaseRef.current = 'transition';
+    }
+  };
+
+  const onVideoFinish = () => {
+    const nextRound = currentRoundRef.current + 1;
+    if (nextRound > 3) {
+      showResults();
+    } else {
+      playRound(nextRound);
+    }
+  };
+
   useEffect(() => {
     if (!open || !battleId) return;
 
+    // Reset state
     setPhase('loading');
-    setVideoUrl(null);
+    phaseRef.current = 'loading';
+    setRoundUrls({});
+    roundUrlsRef.current = {};
+    setCurrentRound(0);
+    currentRoundRef.current = 0;
     setHypeIdx(0);
     resultOpacity.setValue(0);
     resultY.setValue(50);
@@ -884,32 +940,47 @@ function VideoBattleModal({ open, battleId, result, me, target, onClose }) {
       setHypeIdx(i => (i + 1) % HYPE_MESSAGES.length);
     }, 3500);
 
-    // Poll for video status
+    // Poll for round videos
     const poll = async () => {
       try {
-        const res = await apiService.getBattleVideo(battleId);
+        const res = await apiService.getRoundVideos(battleId);
         const d = res.data;
-        if (d?.videoStatus === 'DONE' && d?.videoUrl) {
+        const videos = d?.roundVideos || {};
+        const merged = { ...roundUrlsRef.current, ...videos };
+        roundUrlsRef.current = merged;
+        setRoundUrls(merged);
+
+        // If we're in loading phase and round 1 is ready, start playing
+        if (phaseRef.current === 'loading' && merged['1']) {
           loadProgress.stopAnimation();
           Animated.timing(loadProgress, { toValue: 1, duration: 500, useNativeDriver: false }).start(() => {
-            setVideoUrl(d.videoUrl);
-            setPhase('playing');
+            playRound(1);
           });
+        }
+
+        // If we're in transition and the current round video arrived
+        if (phaseRef.current === 'transition' && merged[String(currentRoundRef.current)]) {
+          setPhase(`round${currentRoundRef.current}`);
+          phaseRef.current = `round${currentRoundRef.current}`;
+        }
+
+        // If all rounds done, stop polling
+        if (merged['1'] && merged['2'] && merged['3']) {
           clearInterval(pollRef.current);
-        } else if (d?.videoStatus === 'FAILED') {
-          clearInterval(pollRef.current);
-          showResults();
         }
       } catch {}
     };
-    pollRef.current = setInterval(poll, 5000);
-    setTimeout(poll, 3000);
+    pollRef.current = setInterval(poll, 4000);
+    setTimeout(poll, 2000); // First poll after 2s
 
-    // Timeout after 120s — show results directly
+    // Global timeout — 90s then show results directly
     timeoutRef.current = setTimeout(() => {
-      clearInterval(pollRef.current);
-      showResults();
-    }, 120000);
+      cleanup();
+      // If still not showing results, force it
+      if (phaseRef.current !== 'result') {
+        showResults();
+      }
+    }, 90000);
 
     return () => { cleanup(); pulse.stop(); glow.stop(); };
   }, [open, battleId]);
@@ -950,16 +1021,27 @@ function VideoBattleModal({ open, battleId, result, me, target, onClose }) {
             </View>
           )}
 
-          {/* Video Playback Phase */}
-          {phase === 'playing' && videoUrl && (
+          {/* Transition between rounds */}
+          {phase === 'transition' && (
+            <View style={vb.hypeWrap}>
+              <Animated.Text style={[vb.vsText, { transform: [{ scale: pulseAnim }] }]}>
+                ROUND {currentRound}
+              </Animated.Text>
+              <ActivityIndicator size="large" color="#CC0000" />
+              <Text style={vb.hypeText}>PREPARANDO SIGUIENTE ROUND...</Text>
+            </View>
+          )}
+
+          {/* Video Playback for any round */}
+          {(phase === 'round1' || phase === 'round2' || phase === 'round3') && roundUrls[String(currentRound)] && (
             <Video
               ref={videoRef}
-              source={{ uri: videoUrl }}
+              source={{ uri: roundUrls[String(currentRound)] }}
               style={vb.video}
               resizeMode={ResizeMode.CONTAIN}
               shouldPlay
               onPlaybackStatusUpdate={(status) => {
-                if (status.didJustFinish) showResults();
+                if (status.didJustFinish) onVideoFinish();
               }}
             />
           )}
@@ -1025,7 +1107,7 @@ const vb = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function BattleScreen() {
   const { user, refreshMe } = useAuth();
-  const { battleHistory, loadHistory, challenge, pendingChallenges, loadPending, respondToChallenge, declineChallenge } = useBattleData();
+  const { battleHistory, loadHistory, challenge, quickBattle, pendingChallenges, loadPending, respondToChallenge, declineChallenge } = useBattleData();
   const [members, setMembers]               = useState([]);
   const [loading, setLoading]               = useState(true);
   const [challengeTarget, setChallengeTarget] = useState(null);
@@ -1065,9 +1147,24 @@ export default function BattleScreen() {
       setFighting(true);
       const result = await challenge(challengeTarget.id, moves);
       setChallengeTarget(null);
-      // Now it's pending — show confirmation instead of battle
       Alert.alert('Desafío Enviado', `Le mandaste el desafío a ${challengeTarget.name}. Cuando acepte, se resuelve la pelea.`);
-      await load(); // Refresh
+      await load();
+    } catch (e) {
+      Alert.alert('Battle', e.message);
+    } finally {
+      setFighting(false);
+    }
+  };
+
+  const onQuickFight = async (moves) => {
+    if (!challengeTarget) return;
+    try {
+      setFighting(true);
+      const result = await quickBattle(challengeTarget.id, moves);
+      const target = challengeTarget;
+      setChallengeTarget(null);
+      // Use BattleModal (sprite animation), not VideoBattleModal — video generates in background
+      setBattleState({ open: true, result, target, battleId: null });
     } catch (e) {
       Alert.alert('Battle', e.message);
     } finally {
@@ -1283,6 +1380,7 @@ export default function BattleScreen() {
         fighting={fighting}
         onCancel={() => setChallengeTarget(null)}
         onFight={onFight}
+        onQuickFight={onQuickFight}
       />
 
       <MovePickerModal

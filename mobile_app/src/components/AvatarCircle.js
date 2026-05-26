@@ -52,7 +52,7 @@ export default function AvatarCircle({ name, avatarClass, bodyStage, size = 'med
               width: dimension * 1.6,
               height: dimension * 2.6,
               borderRadius: 0,
-              marginTop: dimension * 0.55,
+              marginTop: dimension * 1.6,
             }}
             resizeMode="cover"
             onLoad={() => setLoading(false)}

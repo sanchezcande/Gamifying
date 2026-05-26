@@ -25,6 +25,21 @@ export function BattleProvider({ children }) {
     }
   };
 
+  const quickBattle = async (defenderId, moves) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await apiService.quickBattle(defenderId, moves);
+      setBattleResult(result.data);
+      return result.data;
+    } catch (e) {
+      setError(e.message);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadPending = async () => {
     try {
       const result = await apiService.getPendingChallenges();
@@ -75,7 +90,7 @@ export function BattleProvider({ children }) {
     }
   };
 
-  const value = useMemo(() => ({ battleResult, battleHistory, loading, error, challenge, loadHistory, pendingChallenges, loadPending, respondToChallenge, declineChallenge }), [battleResult, battleHistory, loading, error, pendingChallenges]);
+  const value = useMemo(() => ({ battleResult, battleHistory, loading, error, challenge, quickBattle, loadHistory, pendingChallenges, loadPending, respondToChallenge, declineChallenge }), [battleResult, battleHistory, loading, error, pendingChallenges]);
 
   return <BattleContext.Provider value={value}>{children}</BattleContext.Provider>;
 }

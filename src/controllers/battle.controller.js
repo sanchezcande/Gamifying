@@ -5,7 +5,7 @@ const { getActiveSupplements } = require('../services/supplementService');
 const { getAvatarProgress } = require('../services/avatarService');
 const { generateAvatarForUser } = require('../services/avatarImageService');
 const { enqueueAvatarRender } = require('../services/avatarRenderQueue');
-const { generateBattleVideo } = require('../services/battleVideoService');
+const { generateBattleVideo, generateRoundVideo } = require('../services/battleVideoService');
 
 const WEEKLY_BATTLE_LIMIT = 999;
 
@@ -176,27 +176,37 @@ async function respondToChallenge(req, res) {
       });
     }
 
-    // Enqueue battle video generation in background
+    // Generate round videos in parallel (each round independently)
     if (process.env.GOOGLE_API_KEY) {
-      generateBattleVideo({
-        challenger, defender,
-        rounds: battleResolution.rounds,
-        winnerId,
-      })
-        .then((video) => {
-          const videoUrl = video.uri || video.url || null;
-          return prisma.battle.update({
-            where: { id: battle.id },
-            data: { videoUrl, videoStatus: 'DONE' },
-          });
+      const rounds = battleResolution.rounds;
+      for (let i = 0; i < rounds.length; i++) {
+        const roundIdx = i;
+        generateRoundVideo({
+          challenger, defender,
+          round: rounds[roundIdx],
+          roundIdx,
+          totalRounds: rounds.length,
+          winnerId,
         })
-        .catch((err) => {
-          console.error('Battle video generation failed:', err.message);
-          prisma.battle.update({
-            where: { id: battle.id },
-            data: { videoStatus: 'FAILED' },
-          }).catch(() => {});
-        });
+          .then((video) => {
+            const videoUrl = video.uri || video.url || null;
+            return prisma.$transaction(async (tx) => {
+              const current = await tx.battle.findUnique({ where: { id: battle.id }, select: { roundVideos: true } });
+              const existing = (current?.roundVideos || {});
+              existing[String(roundIdx + 1)] = videoUrl;
+              await tx.battle.update({
+                where: { id: battle.id },
+                data: {
+                  roundVideos: existing,
+                  ...(Object.keys(existing).length >= rounds.length ? { videoStatus: 'DONE' } : { videoStatus: 'PROCESSING' }),
+                },
+              });
+            });
+          })
+          .catch((err) => {
+            console.error(`Round ${roundIdx + 1} video failed:`, err.message);
+          });
+      }
     }
 
     return ok(res, {
@@ -381,4 +391,159 @@ async function battleVideo(req, res) {
   }
 }
 
-module.exports = { challenge, respondToChallenge, pendingChallenges, declineChallenge, history, leaderboard, battlesRemaining, battleVideo };
+async function quickBattle(req, res) {
+  try {
+    const challenger = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const defender = await prisma.user.findUnique({ where: { id: req.params.defenderId } });
+
+    if (!defender) return fail(res, 404, 'User not found');
+    if (challenger.id === defender.id) return fail(res, 400, 'Cannot battle yourself');
+    if (!challenger.gymId || challenger.gymId !== defender.gymId) {
+      return fail(res, 400, 'Cannot battle users from other gyms');
+    }
+
+    const rewards = { gcReward: 50, xpReward: 30 };
+    const { challengerProbability, defenderProbability } = calculateProbabilities(challenger, defender);
+
+    const [challengerSupps, defenderSupps] = await Promise.all([
+      getActiveSupplements(challenger.id),
+      getActiveSupplements(defender.id),
+    ]);
+    const challengerCategories = challengerSupps.map(s => s.shopItem.category);
+    const defenderCategories = defenderSupps.map(s => s.shopItem.category);
+
+    let challengerMoves = req.body?.moves;
+    if (!challengerMoves || !validateMoves(challengerMoves, challengerCategories)) {
+      challengerMoves = pickAIMoves(challenger, challengerCategories);
+    }
+    const defenderMoves = pickAIMoves(defender, defenderCategories);
+
+    const battleResolution = resolveBattle(challenger, defender, challengerMoves, defenderMoves);
+    const winnerId = battleResolution.winnerId;
+
+    const battleResult = await prisma.$transaction(async (tx) => {
+      const battle = await tx.battle.create({
+        data: {
+          challengerId: challenger.id,
+          defenderId: defender.id,
+          gymId: challenger.gymId,
+          challengerProbability,
+          defenderProbability,
+          winnerId,
+          status: 'RESOLVED',
+          challengerMoves,
+          defenderMoves,
+          roundResults: battleResolution.rounds,
+          videoStatus: process.env.GOOGLE_API_KEY ? 'PENDING' : 'NONE',
+          ...rewards,
+        }
+      });
+
+      const winner = winnerId === challenger.id ? challenger : defender;
+      const next = {
+        ...winner,
+        xp: winner.xp + rewards.xpReward,
+        gymCoins: winner.gymCoins + rewards.gcReward,
+        currentMonthXp: winner.currentMonthXp + rewards.xpReward,
+      };
+      const avatar = getAvatarProgress(next);
+      const shouldUpdateImage =
+        winner.avatarGender &&
+        (avatar.avatarClass !== winner.avatarClass || avatar.avatarBodyStage !== winner.avatarBodyStage);
+
+      await tx.user.update({
+        where: { id: winner.id },
+        data: {
+          xp: next.xp,
+          gymCoins: next.gymCoins,
+          currentMonthXp: next.currentMonthXp,
+          avatarClass: avatar.avatarClass,
+          avatarBodyStage: avatar.avatarBodyStage,
+        }
+      });
+
+      return { battle, winner, avatar, shouldUpdateImage };
+    });
+
+    if (battleResult?.shouldUpdateImage) {
+      enqueueAvatarRender({
+        user: battleResult.winner,
+        avatarClass: battleResult.avatar.avatarClass,
+        avatarBodyStage: battleResult.avatar.avatarBodyStage,
+      });
+    }
+
+    // Generate round videos in parallel (each round independently)
+    if (process.env.GOOGLE_API_KEY) {
+      const rounds = battleResolution.rounds;
+      for (let i = 0; i < rounds.length; i++) {
+        const roundIdx = i;
+        generateRoundVideo({
+          challenger, defender,
+          round: rounds[roundIdx],
+          roundIdx,
+          totalRounds: rounds.length,
+          winnerId,
+        })
+          .then((video) => {
+            const videoUrl = video.uri || video.url || null;
+            return prisma.$transaction(async (tx) => {
+              const current = await tx.battle.findUnique({ where: { id: battleResult.battle.id }, select: { roundVideos: true } });
+              const existing = (current?.roundVideos || {});
+              existing[String(roundIdx + 1)] = videoUrl;
+              await tx.battle.update({
+                where: { id: battleResult.battle.id },
+                data: {
+                  roundVideos: existing,
+                  ...(Object.keys(existing).length >= rounds.length ? { videoStatus: 'DONE' } : { videoStatus: 'PROCESSING' }),
+                },
+              });
+            });
+          })
+          .catch((err) => {
+            console.error(`Round ${roundIdx + 1} video failed:`, err.message);
+          });
+      }
+    }
+
+    return ok(res, {
+      battleId: battleResult.battle.id,
+      challengerProbability,
+      defenderProbability,
+      winnerId,
+      gcEarned: rewards.gcReward,
+      xpEarned: rewards.xpReward,
+      rounds: battleResolution.rounds,
+      challengerMoves,
+      defenderMoves,
+    });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+async function roundVideos(req, res) {
+  try {
+    const { battleId } = req.params;
+    const battle = await prisma.battle.findUnique({
+      where: { id: battleId },
+      select: { id: true, challengerId: true, defenderId: true, roundVideos: true, videoStatus: true }
+    });
+    if (!battle) return fail(res, 404, 'Battle not found');
+
+    const userId = req.user.id;
+    if (battle.challengerId !== userId && battle.defenderId !== userId) {
+      return fail(res, 403, 'Forbidden');
+    }
+
+    return ok(res, {
+      battleId: battle.id,
+      videoStatus: battle.videoStatus,
+      roundVideos: battle.roundVideos || {},
+    });
+  } catch (error) {
+    return fail(res, 500, error.message);
+  }
+}
+
+module.exports = { challenge, quickBattle, respondToChallenge, pendingChallenges, declineChallenge, history, leaderboard, battlesRemaining, battleVideo, roundVideos };

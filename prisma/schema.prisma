@@ -165,6 +165,7 @@ model Battle {
   xpReward              Int               @default(30)
   videoUrl              String?
   videoStatus           BattleVideoStatus @default(NONE)
+  roundVideos           Json?
   status                BattleStatus      @default(RESOLVED)
   challengerMoves       Json?
   defenderMoves         Json?

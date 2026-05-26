@@ -100,4 +100,84 @@ async function generateBattleVideo({ challenger, defender, rounds, winnerId }) {
   return video;
 }
 
-module.exports = { generateBattleVideo, buildBattleVideoPrompt };
+function buildRoundVideoPrompt({ challenger, defender, round, roundIdx, totalRounds, winnerId }) {
+  const cGender = challenger.avatarGender === 'FEMALE' ? 'female' : 'male';
+  const dGender = defender.avatarGender === 'FEMALE' ? 'female' : 'male';
+  const cStageBuilds = challenger.avatarGender === 'FEMALE' ? STAGE_BUILD_FEMALE : STAGE_BUILD_MALE;
+  const dStageBuilds = defender.avatarGender === 'FEMALE' ? STAGE_BUILD_FEMALE : STAGE_BUILD_MALE;
+  const cBuild = cStageBuilds[challenger.avatarBodyStage] || CLASS_BUILD[challenger.avatarClass] || CLASS_BUILD.ROOKIE;
+  const dBuild = dStageBuilds[defender.avatarBodyStage] || CLASS_BUILD[defender.avatarClass] || CLASS_BUILD.ROOKIE;
+
+  const cMove = MOVE_DESCRIPTIONS[round.challengerMove] || 'attacks';
+  const dMove = MOVE_DESCRIPTIONS[round.defenderMove] || 'attacks';
+  const cDmg = round.challengerDamageDealt || 0;
+  const dDmg = round.defenderDamageDealt || 0;
+  const bigHit = Math.max(cDmg, dDmg) > 25;
+  const isLast = roundIdx === totalRounds - 1;
+  const winnerSide = winnerId === challenger.id ? 'left' : 'right';
+  const loserSide = winnerId === challenger.id ? 'right' : 'left';
+
+  const parts = [
+    `Cinematic 3D animated fight scene, Round ${roundIdx + 1}, two fighting game characters in a gym arena with neon lights`,
+    `Art style: Pixar meets Street Fighter, stylized 3D, vibrant colors, anime-style energy effects`,
+    `Left fighter: ${cGender}, ${cBuild}`,
+    `Right fighter: ${dGender}, ${dBuild}`,
+    `Action: Left fighter ${cMove}. Right fighter ${dMove}`,
+  ];
+
+  if (bigHit) parts.push('Massive impact, camera shakes violently');
+
+  if (isLast) {
+    parts.push(`Final blow with dramatic slow-motion`);
+    parts.push(`The ${loserSide} fighter falls to their knees defeated`);
+    parts.push(`The ${winnerSide} fighter strikes a victory pose with energy particles swirling`);
+  }
+
+  parts.push('Dynamic camera angles, close-ups on impacts');
+  parts.push('No text, no watermark, smooth animation, 3 seconds');
+
+  return parts.join('. ') + '.';
+}
+
+async function generateRoundVideo({ challenger, defender, round, roundIdx, totalRounds, winnerId }) {
+  const ai = getGenAIClient();
+  if (!ai) throw new Error('GOOGLE_API_KEY is not configured');
+
+  const prompt = buildRoundVideoPrompt({ challenger, defender, round, roundIdx, totalRounds, winnerId });
+
+  const referenceImages = [];
+  const challengerPhoto = challenger.baseAvatarPhoto || challenger.profilePhoto;
+  const defenderPhoto = defender.baseAvatarPhoto || defender.profilePhoto;
+
+  if (challengerPhoto && challengerPhoto.startsWith('data:')) {
+    const [meta, data] = challengerPhoto.split(',');
+    const mimeType = meta.match(/data:(.*?);/)?.[1] || 'image/png';
+    referenceImages.push({ image: { imageBytes: data, mimeType }, referenceType: 'asset' });
+  }
+  if (defenderPhoto && defenderPhoto.startsWith('data:')) {
+    const [meta, data] = defenderPhoto.split(',');
+    const mimeType = meta.match(/data:(.*?);/)?.[1] || 'image/png';
+    referenceImages.push({ image: { imageBytes: data, mimeType }, referenceType: 'asset' });
+  }
+
+  let operation = await ai.models.generateVideos({
+    model: 'veo-3.1-generate-preview',
+    prompt,
+    config: {
+      ...(referenceImages.length > 0 ? { referenceImages } : {}),
+      aspectRatio: '16:9',
+      durationSeconds: 3,
+    },
+  });
+
+  while (!operation.done) {
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+    operation = await ai.operations.getVideosOperation({ operation });
+  }
+
+  const video = operation.response?.generatedVideos?.[0]?.video;
+  if (!video) throw new Error('No video generated for round ' + (roundIdx + 1));
+  return video;
+}
+
+module.exports = { generateBattleVideo, buildBattleVideoPrompt, generateRoundVideo, buildRoundVideoPrompt };

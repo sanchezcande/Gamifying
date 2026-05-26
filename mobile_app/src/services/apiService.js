@@ -137,6 +137,10 @@ class ApiService {
     return this.unwrap(await this.client.post(`/battles/challenge/${defenderId}`, { moves }));
   }
 
+  async quickBattle(defenderId, moves) {
+    return this.unwrap(await this.client.post(`/battles/quick/${defenderId}`, { moves }));
+  }
+
   async getBattlesRemaining() {
     return this.unwrap(await this.client.get('/battles/remaining'));
   }
@@ -215,6 +219,10 @@ class ApiService {
 
   async declineChallenge(battleId) {
     return this.unwrap(await this.client.post(`/battles/${battleId}/decline`));
+  }
+
+  async getRoundVideos(battleId) {
+    return this.unwrap(await this.client.get(`/battles/${battleId}/round-videos`));
   }
 }
 
